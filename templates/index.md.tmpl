@@ -1,0 +1,66 @@
+---
+page_title: "Provider: Unified Policy"
+description: |-
+  The JFrog Unified Policy provider is used to interact with the JFrog Unified Policy API features for lifecycle policy management.
+---
+
+# Unified Policy Provider
+
+{{ .Description | trimspace }}
+
+## Authentication
+
+The Unified Policy provider supports several ways to authenticate:
+
+### Access Token (Recommended)
+
+The provider requires an Access Token to interact with the Unified Policy API.
+
+```terraform
+provider "unifiedpolicy" {
+  url          = "https://myinstance.jfrog.io/artifactory"
+  access_token = "my-access-token"
+}
+```
+
+You can also use environment variables:
+
+```bash
+export JFROG_URL="https://myinstance.jfrog.io/artifactory"
+export JFROG_ACCESS_TOKEN="my-access-token"
+```
+
+### API Key (Deprecated)
+
+API keys are deprecated but still supported for backward compatibility.
+
+```terraform
+provider "unifiedpolicy" {
+  url     = "https://myinstance.jfrog.io/artifactory"
+  api_key = "my-api-key"
+}
+```
+
+## Requirements
+
+- Artifactory 7.125.0 or later
+- Xray 3.130.5 or later
+- Enterprise Plus license with AppTrust entitlements
+- Terraform 1.0 or later
+
+## Schema
+
+{{ .SchemaMarkdown | trimspace }}
+
+## Unified Policy API Endpoints
+
+This provider uses the JFrog Unified Policy API (`/unifiedpolicy/api/v1/policies`) to manage lifecycle policies. Lifecycle policies define the rules and enforcement actions that apply to applications at specific stages of the software development lifecycle (SDLC).
+
+### Lifecycle Policy Management
+
+Lifecycle policies are governance controls that define:
+- **Conditions** to check (e.g., CVEs, licenses, evidence requirements)
+- **Actions** to take when conditions are met (e.g., `block` to fail promotion, `warning` to allow with violation)
+- **Scope** (project-level or application-level)
+- **Lifecycle gates** (entry, exit, release) at specific stages
+
