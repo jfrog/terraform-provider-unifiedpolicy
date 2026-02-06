@@ -1,49 +1,61 @@
-# How to Contribute
+# Contribution Guide
 
-We'd love to accept your patches and contributions to this project. There are just a few guidelines you need to follow.
+## Contributors
 
-## Contributor License Agreement
+Pull requests, issues and comments are welcomed. For pull requests:
 
-Contributions to this project must be accompanied by a Contributor License Agreement. You (or your employer) retain the copyright to your contribution; this simply gives us permission to use and redistribute your contributions as part of the project. Head over to <https://cla.jfrog.com/> to see your current agreements on file or to sign a new one.
+* Add tests for new features and bug fixes
+* Follow the existing style
+* Separate unrelated changes into multiple pull requests
 
-You generally only need to submit a CLA once, so if you've already submitted one (even if it was for a different project), you probably don't need to do it again.
+See the existing issues for things to start contributing.
 
-## Building The Provider
+For bigger changes, make sure you start a discussion first by creating an issue and explaining the intended change.
 
-Clone repository to: `$GOPATH/src/github.com/jfrog/terraform-provider-unifiedpolicy`
+JFrog requires contributors to sign a Contributor License Agreement, known as a CLA. This serves as a record stating that the contributor is entitled to contribute the code/documentation/translation to the project and is willing to have it used in distributions and derivative works (or is willing to transfer ownership).
 
-```sh
-$ mkdir -p $GOPATH/src/github.com/jfrog
-$ cd $GOPATH/src/github.com/jfrog
-$ git clone git@github.com:jfrog/terraform-provider-unifiedpolicy
-```
+## Building
 
-Enter the provider directory and build the provider
+Simply run `make install` - this will compile the provider and install it to `~/.terraform.d`. When running this, it will take the current tag and bump it 1 patch version. It does not actually create a new tag. If you wish to use the locally installed provider, make sure your TF script refers to the new version number.
 
-```sh
-$ cd $GOPATH/src/github.com/jfrog/terraform-provider-unifiedpolicy
-$ make build
-```
+Requirements:
+- [Terraform](https://www.terraform.io/downloads.html) 1.0+
+- [Go](https://golang.org/doc/install) 1.24+ (to build the provider plugin)
+
+## Debugging
+
+See [debugging wiki](https://github.com/jfrog/terraform-provider-artifactory/wiki/Debugging).
 
 ## Testing
 
-To run the full suite of Acceptance tests, run `make acceptance`.
+First, you need a running instance of the JFrog Platform with Unified Policy (Artifactory 7.125.0+, Xray 3.130.5+, Enterprise Plus with AppTrust).
 
-*Note:* Acceptance tests create real resources, and often cost money to run. You should expect that the full acceptance test suite will take hours to run.
+Then, you have to set some environment variables as this is how the acceptance tests pick up their config.
+
+```sh
+JFROG_URL=https://myinstance.jfrog.io/artifactory
+JFROG_ACCESS_TOKEN=<your_access_token>
+TF_ACC=true
+```
+
+A crucial env var to set is `TF_ACC=true` - you can literally set `TF_ACC` to anything you want, so long as it's set. The acceptance tests use terraform testing libraries that, if this flag isn't set, will skip all tests.
+
+You can then run the tests as
+
+```sh
+$ go test -v -p 1 ./pkg/...
+```
+
+Or
 
 ```sh
 $ make acceptance
 ```
 
-## Generating Documentation
+**DO NOT** remove the `-v` - terraform testing needs this. This will recursively run all tests, including acceptance tests.
 
-To generate documentation, run:
+## Releasing
 
-```sh
-$ make doc
-```
+Please create a pull request against the master branch. Each pull request will be reviewed by a member of the JFrog team.
 
-## Code reviews
-
-All submissions, including submissions by project members, require review. We use GitHub pull requests for this purpose. Consult [GitHub Help](https://help.github.com/articles/about-pull-requests/) for more information on using pull requests.
-
+#### Thank you for contributing!

@@ -37,11 +37,26 @@ Detailed documentation of resources and attributes will be available on [Terrafo
 
 ## Resources and Data Sources
 
-Resources and data sources will be documented here as they are implemented.
+Detailed documentation is available on the [Terraform Registry](https://registry.terraform.io/providers/jfrog/unifiedpolicy/latest/docs). Summary:
 
-### Planned Resources
+### Resources
 
-- **unifiedpolicy_lifecycle_policy**: Manages lifecycle policies that define rules and enforcement actions for application versions at specific SDLC stages.
+| Resource | Description |
+|----------|-------------|
+| **unifiedpolicy_lifecycle_policy** | Manages lifecycle policies that define rules and enforcement actions for application versions at specific SDLC stages. |
+| **unifiedpolicy_template** | Manages templates: reusable logic (business rules) for policies using Rego policy language from a `.rego` file. |
+| **unifiedpolicy_rule** | Manages rules that define parameter values for policy evaluation and are based on rule templates. |
+
+### Data Sources
+
+| Data Source | Description |
+|-------------|-------------|
+| **unifiedpolicy_lifecycle_policy** | Reads a single lifecycle policy by ID. |
+| **unifiedpolicy_lifecycle_policies** | Reads multiple lifecycle policies (with optional filters). |
+| **unifiedpolicy_template** | Reads a single template by ID. |
+| **unifiedpolicy_templates** | Reads multiple templates (with optional filters). |
+| **unifiedpolicy_rule** | Reads a single rule by ID. |
+| **unifiedpolicy_rules** | Reads multiple rules (with optional filters). |
 
 ## Local Development
 
@@ -65,7 +80,7 @@ For local development, you can use `dev_overrides` to test the provider without 
 
 2. **Build and install the provider**:
    ```bash
-   make dev-install
+   make install
    ```
 
 3. **Use Terraform commands directly** (no need for `terraform init`):
@@ -75,7 +90,7 @@ For local development, you can use `dev_overrides` to test the provider without 
    terraform apply
    ```
 
-See [CONTRIBUTIONS.md](CONTRIBUTIONS.md) for contribution guidelines and troubleshooting.
+See [CONTRIBUTIONS.md](CONTRIBUTIONS.md) for contribution guidelines and [CONTRIBUTING.md](CONTRIBUTING.md) for CLA and pull request process.
 
 ## Prerequisites
 
@@ -107,7 +122,11 @@ The provider supports the following authentication methods:
 
 ## API Endpoints
 
-This provider uses the JFrog Unified Policy API (`/unifiedpolicy/api/v1/policies`) to manage lifecycle policies. Lifecycle policies define the rules and enforcement actions that apply to applications at specific stages of the software development lifecycle (SDLC).
+This provider uses the JFrog Unified Policy API (`/unifiedpolicy/api/v1`) to manage:
+
+- **Templates** – Rego-based policy logic (business rules)
+- **Rules** – Parameterized instances of templates used in policies
+- **Lifecycle policies** – Governance controls that apply rules at SDLC stages
 
 ### Lifecycle Policy Management
 
@@ -116,6 +135,10 @@ Lifecycle policies are governance controls that define:
 - **Actions** to take when conditions are met (`block` to fail promotion, `warning` to allow with violation)
 - **Scope** (project-level or application-level)
 - **Lifecycle gates** (entry, exit, release) at specific stages
+
+## Contributors
+
+See the [contribution guide](CONTRIBUTIONS.md).
 
 ## Versioning
 

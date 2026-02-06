@@ -77,6 +77,7 @@ Once the tag is pushed, the GitHub Actions workflow (`.github/workflows/release.
 3. Sign the release with GPG
 4. Create a GitHub release
 5. Upload artifacts to the release
+6. Publish to Terraform Registry and OpenTofu Registry
 
 ## Example Session
 
@@ -170,8 +171,54 @@ After the release is created:
 
 1. Monitor the GitHub Actions workflow for successful completion
 2. Verify the release appears on the [Releases page](https://github.com/jfrog/terraform-provider-unifiedpolicy/releases)
-3. Update documentation if needed
-4. Announce the release to stakeholders
+3. Verify the provider is available on:
+   - [Terraform Registry](https://registry.terraform.io/providers/jfrog/unifiedpolicy)
+   - [OpenTofu Registry](https://registry.opentofu.org/providers/jfrog/unifiedpolicy)
+4. Update documentation if needed
+5. Announce the release to stakeholders
+
+## Versioning Guidelines
+
+This project follows [Semantic Versioning](https://semver.org/):
+
+- **MAJOR**: Incompatible API changes, breaking changes
+- **MINOR**: New features, backwards-compatible additions
+- **PATCH**: Bug fixes, backwards-compatible fixes
+
+### When to Increment
+
+| Change Type | Version Bump |
+|-------------|--------------|
+| Breaking schema change | MAJOR |
+| New resource/data source | MINOR |
+| New attribute (optional) | MINOR |
+| Bug fix | PATCH |
+| Documentation update | PATCH |
+| Dependency update (non-breaking) | PATCH |
+
+## Pre-Release Checklist
+
+Before running the release script:
+
+1. **Update CHANGELOG.md**
+   - Add new version header with date and tested versions
+   - Document all changes (features, bug fixes, breaking changes)
+   - Include issue/PR references
+
+2. **Update Documentation**
+   - Run `make doc` to regenerate documentation
+   - Verify examples are up to date
+
+3. **Run Tests**
+   ```bash
+   make test
+   make acceptance
+   ```
+
+4. **Verify Build**
+   ```bash
+   make build
+   ```
 
 ## Notes
 
