@@ -43,6 +43,53 @@ Resources and data sources will be documented here as they are implemented.
 
 - **unifiedpolicy_lifecycle_policy**: Manages lifecycle policies that define rules and enforcement actions for application versions at specific SDLC stages.
 
+## Local Development
+
+For local development, you can use `dev_overrides` to test the provider without publishing it to the registry.
+
+### Quick Setup
+
+1. **Set up dev_overrides** (one-time setup):
+   ```bash
+   ./setup-dev-overrides.sh
+   ```
+   Or manually create/update `~/.terraformrc`:
+   ```hcl
+   provider_installation {
+     dev_overrides {
+       "jfrog/unifiedpolicy" = "/absolute/path/to/terraform-provider-unifiedpolicy"
+     }
+     direct {}
+   }
+   ```
+
+2. **Build and install the provider**:
+   ```bash
+   make dev-install
+   ```
+
+3. **Use Terraform commands directly** (no need for `terraform init`):
+   ```bash
+   terraform validate
+   terraform plan
+   terraform apply
+   ```
+
+See [CONTRIBUTIONS.md](CONTRIBUTIONS.md) for contribution guidelines and troubleshooting.
+
+## Prerequisites
+
+Before creating lifecycle policies, you must have the following resources in your JFrog Platform instance:
+
+1. **Templates** - Define the logic (Rego policies) for rules
+2. **Rules** - Reference templates and are enforced by policies
+3. **Projects** - Required for project-scoped policies
+4. **Applications** - Required for application-scoped policies
+5. **Lifecycle Stages** - Stages referenced in policy actions (e.g., PROD, qa, DEV)
+6. **Lifecycle Gates** - Gates for each stage (entry, exit, release)
+
+**📖 See the [Terraform Registry documentation](https://registry.terraform.io/providers/jfrog/unifiedpolicy/latest/docs) for setup and examples.**
+
 ## Requirements
 
 - Terraform 1.0+
