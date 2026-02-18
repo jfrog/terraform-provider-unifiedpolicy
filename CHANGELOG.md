@@ -1,4 +1,8 @@
-## 1.0.0 (Feb 6, 2025). Tested on Artifactory 7.125.0 with Terraform 1.0+ and OpenTofu 1.0+
+## 1.0.0 (Feb 18, 2025). Tested on Artifactory 7.125.0 with Terraform 1.0+ and OpenTofu 1.0+
+
+IMPROVEMENTS:
+
+* GitHub: Add `.github` configuration for CI and community — release workflow, CLA Assistant, changelog check, Slack notifications (PRs and issues), Dependabot, issue templates (bug report, feature request), CODE_OF_CONDUCT, and release changelog categories.
 
 FEATURES:
 
