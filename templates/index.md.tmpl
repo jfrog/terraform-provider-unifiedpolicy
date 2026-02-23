@@ -1,12 +1,42 @@
 ---
-page_title: "Provider: Unified Policy"
+layout: ""
+page_title: "JFrog Unified Policy Provider"
 description: |-
-  The JFrog Unified Policy provider is used to interact with the JFrog Unified Policy API features for lifecycle policy management.
+  The JFrog Unified Policy provider provides resources and data sources to interact with Unified Policy (lifecycle policies, templates, rules) from JFrog Platform.
 ---
 
-# Unified Policy Provider
+# JFrog Unified Policy Provider
 
-{{ .Description | trimspace }}
+The [JFrog](https://jfrog.com/) Unified Policy provider is used to interact with Unified Policy features from the [JFrog Platform](https://jfrog.com/help/r/jfrog-rest-apis/jfrog-platform-rest-apis). The provider must be configured with the proper credentials before it can be used.
+
+Links to documentation for specific resources and data sources can be found in the table of contents to the left.
+
+This provider requires Artifactory 7.125.0 or later, Xray 3.130.5 or later, and an Enterprise Plus license with AppTrust entitlements.
+
+## Example Usage
+
+```terraform
+terraform {
+  required_providers {
+    unifiedpolicy = {
+      source  = "jfrog/unifiedpolicy"
+      version = "1.0.0"
+    }
+  }
+}
+
+provider "unifiedpolicy" {
+  url          = "https://myinstance.jfrog.io/artifactory"
+  access_token = "my-access-token"
+}
+
+resource "unifiedpolicy_rule" "example" {
+  name        = "Example Rule"
+  description = "Example rule for policies"
+  template_id = "REPLACE_WITH_TEMPLATE_ID"
+  parameters  = []
+}
+```
 
 ## Authentication
 
@@ -43,12 +73,7 @@ provider "unifiedpolicy" {
 
 ## Requirements
 
-- Artifactory 7.125.0 or later
-- Xray 3.130.5 or later
-- Enterprise Plus license with AppTrust entitlements
-- Terraform 1.0 or later
-
-## Schema
+- Terraform 1.0 or later (or OpenTofu 1.0+)
 
 {{ .SchemaMarkdown | trimspace }}
 
