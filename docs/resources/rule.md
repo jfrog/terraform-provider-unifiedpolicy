@@ -32,12 +32,12 @@ resource "unifiedpolicy_rule" "example" {
 ### Optional
 
 - `description` (String) Free-text description of the rule purpose. Omitted or empty is stored as returned by the API.
-- `is_custom` (Boolean) Indicates if the rule is user-defined (true) or predefined (false). This is computed by the API based on how the rule was created.
 - `parameters` (Attributes List) Array of parameter name/value pairs that match the template definition. Optional; defaults to empty if omitted. (see [below for nested schema](#nestedatt--parameters))
 
 ### Read-Only
 
 - `id` (String) The ID of the rule. This is computed and assigned by the API.
+- `is_custom` (Boolean) Indicates if the rule is user-defined (true) or predefined (false). Computed by the API based on how the rule was created.
 
 <a id="nestedatt--parameters"></a>
 ### Nested Schema for `parameters`

@@ -33,11 +33,13 @@ Returns the details of a Unified Policy template by its ID. Templates define reu
 - `scanners` (List of String) List of scanner types that this template supports. Allowed values: secrets, sca, exposures, contextual_analysis, malicious_package.
 - `updated_at` (String) Timestamp when the template was last updated.
 - `updated_by` (String) User who last updated the template.
+- `version_notes` (String) Notes about the template version. Read-only, set by the API.
 
 <a id="nestedatt--parameters"></a>
 ### Nested Schema for `parameters`
 
 Read-Only:
 
+- `description` (String) Optional description of the parameter.
 - `name` (String) Parameter name.
 - `type` (String) Parameter type. One of: string, bool, int, float, object.

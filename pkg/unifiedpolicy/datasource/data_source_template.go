@@ -50,6 +50,7 @@ type TemplateDataSourceModel struct {
 	Rego           types.String `tfsdk:"rego"`
 	Scanners       types.List   `tfsdk:"scanners"`
 	IsCustom       types.Bool   `tfsdk:"is_custom"`
+	VersionNotes   types.String `tfsdk:"version_notes"`
 	CreatedAt      types.String `tfsdk:"created_at"`
 	CreatedBy      types.String `tfsdk:"created_by"`
 	UpdatedAt      types.String `tfsdk:"updated_at"`
@@ -98,6 +99,10 @@ func (d *TemplateDataSource) Schema(ctx context.Context, req datasource.SchemaRe
 							Description: "Parameter type. One of: string, bool, int, float, object.",
 							Computed:    true,
 						},
+						"description": schema.StringAttribute{
+							Description: "Optional description of the parameter.",
+							Computed:    true,
+						},
 					},
 				},
 			},
@@ -112,6 +117,10 @@ func (d *TemplateDataSource) Schema(ctx context.Context, req datasource.SchemaRe
 			},
 			"is_custom": schema.BoolAttribute{
 				Description: "Whether the template is user-defined (true) or built-in (false).",
+				Computed:    true,
+			},
+			"version_notes": schema.StringAttribute{
+				Description: "Notes about the template version. Read-only, set by the API.",
 				Computed:    true,
 			},
 			"created_at": schema.StringAttribute{
@@ -212,15 +221,23 @@ func (m *TemplateDataSourceModel) FromAPIModel(ctx context.Context, apiModel res
 	m.IsCustom = types.BoolValue(apiModel.IsCustom)
 
 	paramAttrTypes := map[string]attr.Type{
-		"name": types.StringType,
-		"type": types.StringType,
+		"name":        types.StringType,
+		"type":        types.StringType,
+		"description": types.StringType,
 	}
 	if len(apiModel.Parameters) > 0 {
 		parameters := make([]types.Object, len(apiModel.Parameters))
 		for i, param := range apiModel.Parameters {
+			var descValue attr.Value
+			if param.Description != nil {
+				descValue = types.StringValue(*param.Description)
+			} else {
+				descValue = types.StringNull()
+			}
 			paramAttrs := map[string]attr.Value{
-				"name": types.StringValue(param.Name),
-				"type": types.StringValue(param.Type),
+				"name":        types.StringValue(param.Name),
+				"type":        types.StringValue(param.Type),
+				"description": descValue,
 			}
 			paramObj, paramDiags := types.ObjectValue(paramAttrTypes, paramAttrs)
 			diags.Append(paramDiags...)
@@ -252,6 +269,12 @@ func (m *TemplateDataSourceModel) FromAPIModel(ctx context.Context, apiModel res
 		}
 	} else {
 		m.Scanners = types.ListNull(types.StringType)
+	}
+
+	if apiModel.VersionNotes != "" {
+		m.VersionNotes = types.StringValue(apiModel.VersionNotes)
+	} else {
+		m.VersionNotes = types.StringNull()
 	}
 
 	// Timestamps

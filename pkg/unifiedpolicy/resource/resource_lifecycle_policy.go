@@ -149,6 +149,7 @@ func (r *LifecyclePolicyResource) Schema(ctx context.Context, req resource.Schem
 			"description": schema.StringAttribute{
 				Description: "A free-text description of the policy. This field is optional.",
 				Optional:    true,
+				Computed:    true,
 			},
 			"enabled": schema.BoolAttribute{
 				Description: "Whether the policy is active. Set to true to enable the policy, false to disable it.",
@@ -557,8 +558,7 @@ func (r *LifecyclePolicyResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
-	// API returns 201 Created on success
-	if httpResponse.StatusCode() != http.StatusCreated {
+	if httpResponse.IsError() {
 		if httpResponse.StatusCode() == http.StatusConflict {
 			tflog.Warn(ctx, "Policy already exists", map[string]interface{}{
 				"name": plan.Name.ValueString(),
@@ -832,15 +832,14 @@ func (r *LifecyclePolicyResource) Read(ctx context.Context, req resource.ReadReq
 		return
 	}
 
-	// API returns 200 OK on successful read
-	if httpResponse.StatusCode() != http.StatusOK {
-		if httpResponse.StatusCode() == http.StatusNotFound {
-			tflog.Warn(ctx, "Policy not found, removing from state", map[string]interface{}{
-				"policy_id": policyID,
-			})
-			resp.State.RemoveResource(ctx)
-			return
-		}
+	if httpResponse.StatusCode() == http.StatusNotFound {
+		tflog.Warn(ctx, "Policy not found, removing from state", map[string]interface{}{
+			"policy_id": policyID,
+		})
+		resp.State.RemoveResource(ctx)
+		return
+	}
+	if httpResponse.IsError() {
 		// Log full response for debugging
 		responseBody := string(httpResponse.Body())
 		tflog.Error(ctx, "API returned error during read", map[string]interface{}{
@@ -923,18 +922,17 @@ func (r *LifecyclePolicyResource) Update(ctx context.Context, req resource.Updat
 		return
 	}
 
-	// API returns 200 OK on successful update
-	if httpResponse.StatusCode() != http.StatusOK {
-		if httpResponse.StatusCode() == http.StatusNotFound {
-			tflog.Warn(ctx, "Policy not found during update", map[string]interface{}{
-				"policy_id": policyID,
-			})
-			resp.Diagnostics.AddError(
-				"Policy Not Found",
-				fmt.Sprintf("Policy with ID '%s' was not found. The policy may have been deleted.", policyID),
-			)
-			return
-		}
+	if httpResponse.StatusCode() == http.StatusNotFound {
+		tflog.Warn(ctx, "Policy not found during update", map[string]interface{}{
+			"policy_id": policyID,
+		})
+		resp.Diagnostics.AddError(
+			"Policy Not Found",
+			fmt.Sprintf("Policy with ID '%s' was not found. The policy may have been deleted.", policyID),
+		)
+		return
+	}
+	if httpResponse.IsError() {
 		// Log full response for debugging
 		responseBody := string(httpResponse.Body())
 		tflog.Error(ctx, "API returned error during update", map[string]interface{}{

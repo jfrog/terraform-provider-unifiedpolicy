@@ -217,7 +217,6 @@ func TestAccRule_withCustomFlag(t *testing.T) {
 			name        = "%s"
 			description = "Test rule with custom flag"
 			template_id = unifiedpolicy_template.test.id
-			is_custom   = true
 			parameters  = []
 		}
 	`, templateName, regoPath, name, name)

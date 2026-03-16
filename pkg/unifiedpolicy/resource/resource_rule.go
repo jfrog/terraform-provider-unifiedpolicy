@@ -125,8 +125,7 @@ func (r *RuleResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 				Computed:    true,
 			},
 			"is_custom": schema.BoolAttribute{
-				Description: "Indicates if the rule is user-defined (true) or predefined (false). This is computed by the API based on how the rule was created.",
-				Optional:    true,
+				Description: "Indicates if the rule is user-defined (true) or predefined (false). Computed by the API based on how the rule was created.",
 				Computed:    true,
 			},
 			"template_id": schema.StringAttribute{
@@ -268,11 +267,12 @@ func (m *RuleResourceModel) fromAPIModel(ctx context.Context, api RuleAPIModel) 
 	m.Name = types.StringValue(api.Name)
 	m.TemplateID = types.StringValue(api.TemplateID)
 
-	// Store description as returned by API; use empty string when API returns "" so config description = "" matches state (no inconsistent result).
+	// Store description as returned by API; use null when API returns "" so that
+	// omitting description in config (null) matches the refreshed state (null).
 	if api.Description != "" {
 		m.Description = types.StringValue(api.Description)
 	} else {
-		m.Description = types.StringValue("")
+		m.Description = types.StringNull()
 	}
 
 	// Always set is_custom to match what the API returned
@@ -374,6 +374,13 @@ func (r *RuleResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	}
 
 	if httpResponse.IsError() {
+		if httpResponse.StatusCode() == http.StatusNotFound {
+			resp.Diagnostics.AddError(
+				"Rule Not Found",
+				fmt.Sprintf("Rule with ID '%s' was not found during update. It may have been deleted out-of-band.", plan.ID.ValueString()),
+			)
+			return
+		}
 		if httpResponse.StatusCode() == http.StatusConflict {
 			resp.Diagnostics.AddError(
 				"Rule Name Conflict",

@@ -72,11 +72,13 @@ type TemplateResourceModel struct {
 	Rego           types.String `tfsdk:"rego"` // Path to .rego file (or Rego code when reading from API)
 	Scanners       types.List   `tfsdk:"scanners"`
 	IsCustom       types.Bool   `tfsdk:"is_custom"`
+	VersionNotes   types.String `tfsdk:"version_notes"`
 }
 
 type TemplateParameterModel struct {
-	Name types.String `tfsdk:"name"`
-	Type types.String `tfsdk:"type"`
+	Name        types.String `tfsdk:"name"`
+	Type        types.String `tfsdk:"type"`
+	Description types.String `tfsdk:"description"`
 }
 
 // Template API models (used by this resource and template datasources)
@@ -87,10 +89,11 @@ type TemplateAPIModel struct {
 	Version        string                      `json:"version"`
 	Category       string                      `json:"category"`
 	DataSourceType string                      `json:"data_source_type"`
-	Parameters     []TemplateParameterAPIModel `json:"parameters,omitempty"`
+	Parameters     []TemplateParameterAPIModel `json:"parameters"`
 	Rego           string                      `json:"rego"`
 	Scanners       []string                    `json:"scanners,omitempty"`
 	IsCustom       bool                        `json:"is_custom"`
+	VersionNotes   string                      `json:"version_notes,omitempty"`
 	CreatedAt      string                      `json:"created_at,omitempty"`
 	CreatedBy      string                      `json:"created_by,omitempty"`
 	UpdatedAt      string                      `json:"updated_at,omitempty"`
@@ -98,8 +101,9 @@ type TemplateAPIModel struct {
 }
 
 type TemplateParameterAPIModel struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
+	Name        string  `json:"name"`
+	Type        string  `json:"type"`
+	Description *string `json:"description,omitempty"`
 }
 
 type TemplatesListAPIModel struct {
@@ -423,13 +427,13 @@ func (r *TemplateResource) Schema(ctx context.Context, req resource.SchemaReques
 				},
 			},
 			"data_source_type": schema.StringAttribute{
-				Description: "The type of data source the template expects. For creation only 'noop' and 'evidence' are allowed; 'xray' may appear when reading system templates.",
+				Description: "The type of data source the template expects. Must be one of: 'noop', 'evidence'.",
 				Required:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 				Validators: []validator.String{
-					stringvalidator.OneOf("noop", "evidence", "xray"),
+					stringvalidator.OneOf("noop", "evidence"),
 				},
 			},
 			"parameters": schema.ListNestedAttribute{
@@ -438,7 +442,7 @@ func (r *TemplateResource) Schema(ctx context.Context, req resource.SchemaReques
 				Computed:    true,
 				Default: listdefault.StaticValue(
 					types.ListValueMust(
-						types.ObjectType{AttrTypes: map[string]attr.Type{"name": types.StringType, "type": types.StringType}},
+						types.ObjectType{AttrTypes: map[string]attr.Type{"name": types.StringType, "type": types.StringType, "description": types.StringType}},
 						[]attr.Value{},
 					),
 				),
@@ -464,6 +468,10 @@ func (r *TemplateResource) Schema(ctx context.Context, req resource.SchemaReques
 							Validators: []validator.String{
 								stringvalidator.OneOf("string", "bool", "int", "float", "object"),
 							},
+						},
+						"description": schema.StringAttribute{
+							Description: "Optional description of the parameter.",
+							Optional:    true,
 						},
 					},
 				},
@@ -495,6 +503,10 @@ func (r *TemplateResource) Schema(ctx context.Context, req resource.SchemaReques
 			},
 			"is_custom": schema.BoolAttribute{
 				Description: "Indicates whether this is a custom template (created by user) or a system template.",
+				Computed:    true,
+			},
+			"version_notes": schema.StringAttribute{
+				Description: "Notes about the template version. Read-only, set by the API.",
 				Computed:    true,
 			},
 		},
@@ -552,11 +564,18 @@ func (m *TemplateResourceModel) toAPIModel(ctx context.Context) (TemplateAPIMode
 					Name: param.Name.ValueString(),
 					Type: param.Type.ValueString(),
 				}
-			}
-			apiModel.Parameters = apiParams
+				if !param.Description.IsNull() {
+					desc := param.Description.ValueString()
+					apiParams[i].Description = &desc
+				}
+		}
+		apiModel.Parameters = apiParams
 		}
 	}
-	// When Parameters is null or not set, leave apiModel.Parameters as nil so omitempty omits it from JSON; API defaults to []
+	// API requires parameters as a required field; nil would marshal as "parameters": null and cause errors.
+	if apiModel.Parameters == nil {
+		apiModel.Parameters = []TemplateParameterAPIModel{}
+	}
 
 	if !m.Scanners.IsNull() {
 		var scanners []string
@@ -655,15 +674,23 @@ func (m *TemplateResourceModel) fromAPIModel(ctx context.Context, apiModel Templ
 	}
 
 	paramAttrTypes := map[string]attr.Type{
-		"name": types.StringType,
-		"type": types.StringType,
+		"name":        types.StringType,
+		"type":        types.StringType,
+		"description": types.StringType,
 	}
 	if len(apiModel.Parameters) > 0 {
 		parameters := make([]types.Object, len(apiModel.Parameters))
 		for i, param := range apiModel.Parameters {
+			var descValue attr.Value
+			if param.Description != nil {
+				descValue = types.StringValue(*param.Description)
+			} else {
+				descValue = types.StringNull()
+			}
 			paramAttrs := map[string]attr.Value{
-				"name": types.StringValue(param.Name),
-				"type": types.StringValue(param.Type),
+				"name":        types.StringValue(param.Name),
+				"type":        types.StringValue(param.Type),
+				"description": descValue,
 			}
 			paramObj, paramDiags := types.ObjectValue(paramAttrTypes, paramAttrs)
 			diags.Append(paramDiags...)
@@ -703,6 +730,13 @@ func (m *TemplateResourceModel) fromAPIModel(ctx context.Context, apiModel Templ
 
 	// Set is_custom
 	m.IsCustom = types.BoolValue(apiModel.IsCustom)
+
+	// Set version_notes
+	if apiModel.VersionNotes != "" {
+		m.VersionNotes = types.StringValue(apiModel.VersionNotes)
+	} else {
+		m.VersionNotes = types.StringNull()
+	}
 
 	return diags
 }
@@ -752,7 +786,12 @@ func (r *TemplateResource) Read(ctx context.Context, req resource.ReadRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	state.Rego = types.StringValue(regoPath)
+	// Restore the rego file path in state so Terraform tracks the path, not the code.
+	// After `terraform import`, regoPath is "" — leave state.Rego as the API code in that
+	// case so the user can see a meaningful diff on the next plan rather than an empty string.
+	if regoPath != "" {
+		state.Rego = types.StringValue(regoPath)
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
@@ -842,6 +881,13 @@ func (r *TemplateResource) Delete(ctx context.Context, req resource.DeleteReques
 	}
 
 	if httpResponse.StatusCode() != http.StatusNotFound && httpResponse.StatusCode() != http.StatusNoContent {
+		if httpResponse.StatusCode() == http.StatusConflict {
+			resp.Diagnostics.AddError(
+				"Template In Use",
+				"The template is still referenced by one or more rules. Remove or update all rules that use this template before deleting it.",
+			)
+			return
+		}
 		errorDiags := unifiedpolicy.HandleAPIErrorWithType(httpResponse, "delete", "template")
 		resp.Diagnostics.Append(errorDiags...)
 		return

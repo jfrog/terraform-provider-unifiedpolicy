@@ -29,7 +29,7 @@ resource "unifiedpolicy_template" "example" {
 ### Required
 
 - `category` (String) Template category. Must be one of: security, legal, operational, quality, audit, workflow.
-- `data_source_type` (String) The type of data source the template expects. For creation only 'noop' and 'evidence' are allowed; 'xray' may appear when reading system templates.
+- `data_source_type` (String) The type of data source the template expects. Must be one of: 'noop', 'evidence'.
 - `name` (String) The template name. Must be unique. 1-255 characters.
 - `rego` (String) Full (absolute) path to a .rego file (e.g. `rego = "/path/to/policies/security_vulnerability.rego"`). The file is read, validated (syntax and allowed operations), and its content is sent to the API. Only absolute paths to .rego files are accepted; relative paths and inline content are not supported. The path is stored in state; the API stores and returns the Rego code content. Required for create and update.
 - `version` (String) The template version. 1-100 characters.
@@ -44,6 +44,7 @@ resource "unifiedpolicy_template" "example" {
 
 - `id` (String) The ID of the template. This is computed and assigned by the API.
 - `is_custom` (Boolean) Indicates whether this is a custom template (created by user) or a system template.
+- `version_notes` (String) Notes about the template version. Read-only, set by the API.
 
 <a id="nestedatt--parameters"></a>
 ### Nested Schema for `parameters`
@@ -52,6 +53,10 @@ Required:
 
 - `name` (String) Parameter name. Must begin and end with an alphanumeric character and may consist only of dashes, underscores, dots and alphanumerics in between.
 - `type` (String) Parameter type. Must be one of: string, bool, int, float, object.
+
+Optional:
+
+- `description` (String) Optional description of the parameter.
 
 ## Import
 
