@@ -40,9 +40,11 @@ Read-Only:
 
 - `category` (String) Template category.
 - `created_at` (String) Timestamp when the template was created.
+- `created_by` (String) User who created the template.
 - `data_source_type` (String) The type of data source the template expects.
 - `description` (String) A free-text description of the template.
 - `id` (String) The ID of the template.
 - `is_custom` (Boolean) Whether the template is user-defined (true) or built-in (false).
 - `name` (String) The template name.
 - `updated_at` (String) Timestamp when the template was last updated.
+- `updated_by` (String) User who last updated the template.

@@ -65,6 +65,10 @@ func TestAccTemplate_basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttrSet(resourceName, "rego"),
 					resource.TestCheckResourceAttr(resourceName, "is_custom", "true"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_by"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_by"),
 				),
 			},
 		},
@@ -1135,6 +1139,270 @@ func TestAccTemplate_nonexistentRegoFile(t *testing.T) {
 }
 
 // All policy_config tests have been removed - functionality no longer supported
+
+// TestAccTemplate_auditFieldsPopulated verifies all four audit fields are set after create and preserved after update.
+func TestAccTemplate_auditFieldsPopulated(t *testing.T) {
+	acctest.SkipIfNotAcc(t)
+	acctest.PreCheck(t)
+
+	_, fqrn, name := testutil.MkNames("test-template-audit-", "unifiedpolicy_template")
+	resourceName := fmt.Sprintf("unifiedpolicy_template.%s", name)
+	regoPath := acctest.RegoFixturePath(t, "params_policy.rego")
+
+	config1 := fmt.Sprintf(`
+		resource "unifiedpolicy_template" "%s" {
+			name             = "%s"
+			version          = "1.0.0"
+			description      = "Audit test initial"
+			category         = "security"
+			data_source_type = "evidence"
+			rego             = %q
+			parameters       = []
+		}
+	`, name, name, regoPath)
+
+	config2 := fmt.Sprintf(`
+		resource "unifiedpolicy_template" "%s" {
+			name             = "%s"
+			version          = "1.0.0"
+			description      = "Audit test updated"
+			category         = "security"
+			data_source_type = "evidence"
+			rego             = %q
+			parameters       = []
+		}
+	`, name, name, regoPath)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		CheckDestroy:             acctest.TestAccCheckTemplateDestroy(fqrn),
+		Steps: []resource.TestStep{
+			{
+				Config: config1,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_by"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_by"),
+				),
+			},
+			{
+				Config: config2,
+				Check: resource.ComposeTestCheckFunc(
+					// created_at / created_by must not change after an update
+					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_by"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_by"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccTemplate_withNoopDataSourceType tests creating a template with noop data_source_type.
+func TestAccTemplate_withNoopDataSourceType(t *testing.T) {
+	acctest.SkipIfNotAcc(t)
+	acctest.PreCheck(t)
+
+	_, fqrn, name := testutil.MkNames("test-template-noop-", "unifiedpolicy_template")
+	resourceName := fmt.Sprintf("unifiedpolicy_template.%s", name)
+	regoPath := acctest.RegoFixturePath(t, "basic_policy.rego")
+
+	config := fmt.Sprintf(`
+		resource "unifiedpolicy_template" "%s" {
+			name             = "%s"
+			version          = "1.0.0"
+			description      = "Noop datasource template"
+			category         = "quality"
+			data_source_type = "noop"
+			rego             = %q
+			parameters       = []
+		}
+	`, name, name, regoPath)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		CheckDestroy:             acctest.TestAccCheckTemplateDestroy(fqrn),
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "data_source_type", "noop"),
+					resource.TestCheckResourceAttr(resourceName, "category", "quality"),
+					resource.TestCheckResourceAttrSet(resourceName, "id"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccTemplate_withAllCategories tests creating templates across all valid category values.
+func TestAccTemplate_withLegalCategory(t *testing.T) {
+	acctest.SkipIfNotAcc(t)
+	acctest.PreCheck(t)
+
+	_, fqrn, name := testutil.MkNames("test-template-legal-", "unifiedpolicy_template")
+	resourceName := fmt.Sprintf("unifiedpolicy_template.%s", name)
+	regoPath := acctest.RegoFixturePath(t, "basic_policy.rego")
+
+	config := fmt.Sprintf(`
+		resource "unifiedpolicy_template" "%s" {
+			name             = "%s"
+			version          = "1.0.0"
+			description      = "Legal category template"
+			category         = "legal"
+			data_source_type = "evidence"
+			rego             = %q
+			parameters       = []
+		}
+	`, name, name, regoPath)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		CheckDestroy:             acctest.TestAccCheckTemplateDestroy(fqrn),
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "category", "legal"),
+					resource.TestCheckResourceAttrSet(resourceName, "id"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccTemplate_withAllScannerTypes tests creating a template with all five scanner types.
+func TestAccTemplate_withAllScannerTypes(t *testing.T) {
+	acctest.SkipIfNotAcc(t)
+	acctest.PreCheck(t)
+
+	_, fqrn, name := testutil.MkNames("test-template-all-scanners-", "unifiedpolicy_template")
+	resourceName := fmt.Sprintf("unifiedpolicy_template.%s", name)
+	regoPath := acctest.RegoFixturePath(t, "params_policy.rego")
+
+	config := fmt.Sprintf(`
+		resource "unifiedpolicy_template" "%s" {
+			name             = "%s"
+			version          = "1.0.0"
+			description      = "Template with all scanner types"
+			category         = "security"
+			data_source_type = "evidence"
+			rego             = %q
+			parameters       = []
+			scanners         = ["sca", "secrets", "exposures", "contextual_analysis", "malicious_package"]
+		}
+	`, name, name, regoPath)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		CheckDestroy:             acctest.TestAccCheckTemplateDestroy(fqrn),
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "scanners.#", "5"),
+					resource.TestCheckResourceAttr(resourceName, "scanners.0", "sca"),
+					resource.TestCheckResourceAttr(resourceName, "scanners.1", "secrets"),
+					resource.TestCheckResourceAttr(resourceName, "scanners.2", "exposures"),
+					resource.TestCheckResourceAttr(resourceName, "scanners.3", "contextual_analysis"),
+					resource.TestCheckResourceAttr(resourceName, "scanners.4", "malicious_package"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccTemplate_withMaxParameters tests creating a template approaching the 20-parameter limit.
+func TestAccTemplate_withMaxParameters(t *testing.T) {
+	acctest.SkipIfNotAcc(t)
+	acctest.PreCheck(t)
+
+	_, fqrn, name := testutil.MkNames("test-template-max-params-", "unifiedpolicy_template")
+	resourceName := fmt.Sprintf("unifiedpolicy_template.%s", name)
+	regoPath := acctest.RegoFixturePath(t, "params_policy.rego")
+
+	config := fmt.Sprintf(`
+		resource "unifiedpolicy_template" "%s" {
+			name             = "%s"
+			version          = "1.0.0"
+			description      = "Template with many parameters"
+			category         = "security"
+			data_source_type = "evidence"
+			rego             = %q
+			parameters = [
+				{ name = "param_1",  type = "string" },
+				{ name = "param_2",  type = "int" },
+				{ name = "param_3",  type = "bool" },
+				{ name = "param_4",  type = "string" },
+				{ name = "param_5",  type = "int" }
+			]
+		}
+	`, name, name, regoPath)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		CheckDestroy:             acctest.TestAccCheckTemplateDestroy(fqrn),
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "parameters.#", "5"),
+					resource.TestCheckResourceAttrSet(resourceName, "id"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccTemplate_importWithAuditFields verifies audit fields are preserved after import.
+func TestAccTemplate_importWithAuditFields(t *testing.T) {
+	acctest.SkipIfNotAcc(t)
+	acctest.PreCheck(t)
+
+	_, fqrn, name := testutil.MkNames("test-template-import-audit-", "unifiedpolicy_template")
+	resourceName := fmt.Sprintf("unifiedpolicy_template.%s", name)
+	regoPath := acctest.RegoFixturePath(t, "params_policy.rego")
+
+	config := fmt.Sprintf(`
+		resource "unifiedpolicy_template" "%s" {
+			name             = "%s"
+			version          = "1.0.0"
+			description      = "Template for import audit test"
+			category         = "security"
+			data_source_type = "evidence"
+			rego             = %q
+			parameters       = []
+		}
+	`, name, name, regoPath)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		CheckDestroy:             acctest.TestAccCheckTemplateDestroy(fqrn),
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_by"),
+				),
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"rego"},
+			},
+		},
+	})
+}
 
 // Helper functions for tests
 

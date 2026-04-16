@@ -82,7 +82,7 @@ func (d *TemplateDataSource) Schema(ctx context.Context, req datasource.SchemaRe
 				Computed:    true,
 			},
 			"data_source_type": schema.StringAttribute{
-				Description: "The type of data source the template expects. One of: noop, evidence, xray.",
+				Description: "The type of data source the template expects. One of: noop, evidence, public_vulnerability.",
 				Computed:    true,
 			},
 			"parameters": schema.ListNestedAttribute{
