@@ -24,7 +24,7 @@ Returns the details of a Unified Policy template by its ID. Templates define reu
 - `category` (String) Template category. One of: security, legal, operational, quality, audit, workflow.
 - `created_at` (String) Timestamp when the template was created.
 - `created_by` (String) User who created the template.
-- `data_source_type` (String) The type of data source the template expects. One of: noop, evidence, xray.
+- `data_source_type` (String) The type of data source the template expects. One of: noop, evidence, public_vulnerability.
 - `description` (String) A free-text description of the template.
 - `is_custom` (Boolean) Whether the template is user-defined (true) or built-in (false).
 - `name` (String) The template name.

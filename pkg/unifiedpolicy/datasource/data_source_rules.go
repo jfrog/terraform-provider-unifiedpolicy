@@ -92,8 +92,11 @@ func (d *RulesDataSource) Schema(ctx context.Context, req datasource.SchemaReque
 				Optional:    true,
 			},
 			"template_data_source": schema.StringAttribute{
-				Description: "Filter by template data source (e.g., 'xray', 'catalog').",
+				Description: "Filter by template data source. One of: noop, evidence, public_vulnerability.",
 				Optional:    true,
+				Validators: []validator.String{
+					stringvalidator.OneOf("noop", "evidence", "public_vulnerability"),
+				},
 			},
 			"template_category": schema.StringAttribute{
 				Description: "Filter by template category (e.g., 'security', 'quality').",
@@ -173,8 +176,16 @@ func (d *RulesDataSource) Schema(ctx context.Context, req datasource.SchemaReque
 							Description: "Timestamp when the rule was created.",
 							Computed:    true,
 						},
+						"created_by": schema.StringAttribute{
+							Description: "User who created the rule.",
+							Computed:    true,
+						},
 						"updated_at": schema.StringAttribute{
 							Description: "Timestamp when the rule was last updated.",
+							Computed:    true,
+						},
+						"updated_by": schema.StringAttribute{
+							Description: "User who last updated the rule.",
 							Computed:    true,
 						},
 					},
@@ -318,7 +329,9 @@ var ruleListItemAttrTypes = map[string]attr.Type{
 	"template_id": types.StringType,
 	"parameters":  types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{"name": types.StringType, "value": types.StringType}}},
 	"created_at":  types.StringType,
+	"created_by":  types.StringType,
 	"updated_at":  types.StringType,
+	"updated_by":  types.StringType,
 }
 
 func (m *RulesDataSourceModel) FromAPIModel(ctx context.Context, apiModel resource.RulesListAPIModel) diag.Diagnostics {
@@ -354,9 +367,17 @@ func (m *RulesDataSourceModel) FromAPIModel(ctx context.Context, apiModel resour
 		if rule.CreatedAt != "" {
 			createdAt = types.StringValue(rule.CreatedAt)
 		}
+		createdBy := types.StringNull()
+		if rule.CreatedBy != "" {
+			createdBy = types.StringValue(rule.CreatedBy)
+		}
 		updatedAt := types.StringNull()
 		if rule.UpdatedAt != "" {
 			updatedAt = types.StringValue(rule.UpdatedAt)
+		}
+		updatedBy := types.StringNull()
+		if rule.UpdatedBy != "" {
+			updatedBy = types.StringValue(rule.UpdatedBy)
 		}
 
 		ruleAttrs := map[string]attr.Value{
@@ -367,7 +388,9 @@ func (m *RulesDataSourceModel) FromAPIModel(ctx context.Context, apiModel resour
 			"template_id": types.StringValue(rule.TemplateID),
 			"parameters":  parametersList,
 			"created_at":  createdAt,
+			"created_by":  createdBy,
 			"updated_at":  updatedAt,
+			"updated_by":  updatedBy,
 		}
 
 		ruleObj, ruleDiags := types.ObjectValue(ruleListItemAttrTypes, ruleAttrs)

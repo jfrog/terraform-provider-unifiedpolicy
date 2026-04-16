@@ -59,7 +59,7 @@ Read-Only:
 - `application_keys` (List of String) Applications to include (for application scope).
 - `application_labels` (Attributes List) Label filters for application scope. (see [below for nested schema](#nestedatt--scope--application_labels))
 - `project_keys` (List of String) Projects to include (for project scope).
-- `type` (String) Scope type. Either 'project' or 'application'.
+- `type` (String) Scope type. One of: 'global', 'project', 'application'.
 
 <a id="nestedatt--scope--application_labels"></a>
 ### Nested Schema for `scope.application_labels`

@@ -67,6 +67,10 @@ type RuleResourceModel struct {
 	IsCustom    types.Bool   `tfsdk:"is_custom"`
 	TemplateID  types.String `tfsdk:"template_id"`
 	Parameters  types.List   `tfsdk:"parameters"`
+	CreatedAt   types.String `tfsdk:"created_at"`
+	CreatedBy   types.String `tfsdk:"created_by"`
+	UpdatedAt   types.String `tfsdk:"updated_at"`
+	UpdatedBy   types.String `tfsdk:"updated_by"`
 }
 
 type RuleParameterModel struct {
@@ -150,6 +154,28 @@ func (r *RuleResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 						},
 					},
 				},
+			},
+			"created_at": schema.StringAttribute{
+				Description: "Timestamp when the rule was created.",
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"created_by": schema.StringAttribute{
+				Description: "User who created the rule.",
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"updated_at": schema.StringAttribute{
+				Description: "Timestamp when the rule was last updated.",
+				Computed:    true,
+			},
+			"updated_by": schema.StringAttribute{
+				Description: "User who last updated the rule.",
+				Computed:    true,
 			},
 		},
 	}
@@ -299,6 +325,28 @@ func (m *RuleResourceModel) fromAPIModel(ctx context.Context, api RuleAPIModel) 
 	} else {
 		// Fallback to empty list if there's an error creating the list
 		m.Parameters = types.ListValueMust(ruleParameterObjectType, []attr.Value{})
+	}
+
+	// Audit fields
+	if api.CreatedAt != "" {
+		m.CreatedAt = types.StringValue(api.CreatedAt)
+	} else {
+		m.CreatedAt = types.StringNull()
+	}
+	if api.CreatedBy != "" {
+		m.CreatedBy = types.StringValue(api.CreatedBy)
+	} else {
+		m.CreatedBy = types.StringNull()
+	}
+	if api.UpdatedAt != "" {
+		m.UpdatedAt = types.StringValue(api.UpdatedAt)
+	} else {
+		m.UpdatedAt = types.StringNull()
+	}
+	if api.UpdatedBy != "" {
+		m.UpdatedBy = types.StringValue(api.UpdatedBy)
+	} else {
+		m.UpdatedBy = types.StringNull()
 	}
 
 	return diags

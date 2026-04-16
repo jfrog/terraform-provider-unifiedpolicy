@@ -57,6 +57,10 @@ type LifecyclePolicyResourceModel struct {
 	Action      types.Object `tfsdk:"action"`
 	Scope       types.Object `tfsdk:"scope"`
 	RuleIDs     types.List   `tfsdk:"rule_ids"`
+	CreatedAt   types.String `tfsdk:"created_at"`
+	CreatedBy   types.String `tfsdk:"created_by"`
+	UpdatedAt   types.String `tfsdk:"updated_at"`
+	UpdatedBy   types.String `tfsdk:"updated_by"`
 }
 
 type LifecycleActionModel struct {
@@ -165,7 +169,7 @@ func (r *LifecyclePolicyResource) Schema(ctx context.Context, req resource.Schem
 			},
 			"rule_ids": schema.ListAttribute{
 				Description: "IDs of rules enforced by this policy. " +
-					"The API allows exactly one rule per policy (documentation describes an array but validation enforces maximum 1 item). " +
+					"The API allows exactly one rule per policy. " +
 					"The rule ID must reference a valid rule that exists in the system.",
 				ElementType: types.StringType,
 				Required:    true,
@@ -176,6 +180,28 @@ func (r *LifecyclePolicyResource) Schema(ctx context.Context, req resource.Schem
 						stringvalidator.LengthAtLeast(1),
 					),
 				},
+			},
+			"created_at": schema.StringAttribute{
+				Description: "Timestamp when the policy was created.",
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"created_by": schema.StringAttribute{
+				Description: "User who created the policy.",
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"updated_at": schema.StringAttribute{
+				Description: "Timestamp when the policy was last updated.",
+				Computed:    true,
+			},
+			"updated_by": schema.StringAttribute{
+				Description: "User who last updated the policy.",
+				Computed:    true,
 			},
 		},
 		Blocks: map[string]schema.Block{
@@ -213,30 +239,29 @@ func (r *LifecyclePolicyResource) Schema(ctx context.Context, req resource.Schem
 				Description: "Where the policy applies (project-level or application-level).",
 				Attributes: map[string]schema.Attribute{
 					"type": schema.StringAttribute{
-						Description: "Scope type. Must be either 'project' or 'application'.",
+						Description: "Scope type. Must be one of: 'global', 'project', 'application'.",
 						Required:    true,
 						Validators: []validator.String{
-							stringvalidator.OneOf("project", "application"),
+							stringvalidator.OneOf("global", "project", "application"),
 						},
 					},
 					"project_keys": schema.ListAttribute{
-						Description: "Projects to include (required for project scope). " +
-							"The API requires exactly one project key. Each key must be at least 1 character.",
+						Description: "Projects to include (required for project scope, up to 10 project keys).",
 						ElementType: types.StringType,
 						Optional:    true,
 						Validators: []validator.List{
-							listvalidator.SizeAtMost(1),
+							listvalidator.SizeAtMost(10),
 							listvalidator.ValueStringsAre(
 								stringvalidator.LengthAtLeast(1),
 							),
 						},
 					},
 					"application_keys": schema.ListAttribute{
-						Description: "Applications to include (used with application scope). " +
-							"Each application key must be at least 1 character in length.",
+						Description: "Applications to include (used with application scope, up to 10 application keys).",
 						ElementType: types.StringType,
 						Optional:    true,
 						Validators: []validator.List{
+							listvalidator.SizeAtMost(10),
 							listvalidator.ValueStringsAre(
 								stringvalidator.LengthAtLeast(1),
 							),
@@ -457,18 +482,11 @@ func (m *LifecyclePolicyResourceModel) toAPIModel(ctx context.Context) (Lifecycl
 			}
 		}
 
-		// Validate scope requirements per API: project scope requires exactly one project key; application scope may use application_keys and/or application_labels
+		// Validate scope requirements per API spec
 		if scopeType == "project" && !hasProjectKeys {
 			diags.AddError(
 				"Invalid Scope Configuration",
-				"Scope type 'project' requires project_keys with exactly one project key.",
-			)
-			return apiModel, diags
-		}
-		if scopeType == "project" && hasProjectKeys && len(apiModel.Scope.ProjectKeys) != 1 {
-			diags.AddError(
-				"Invalid Scope Configuration",
-				"project_keys must contain exactly one project key (API validation).",
+				"Scope type 'project' requires at least one project key in project_keys.",
 			)
 			return apiModel, diags
 		}
@@ -783,6 +801,28 @@ func (m *LifecyclePolicyResourceModel) fromAPIModel(ctx context.Context, apiMode
 		m.RuleIDs = types.ListValueMust(types.StringType, ruleIDValues)
 	} else {
 		m.RuleIDs = types.ListNull(types.StringType)
+	}
+
+	// Audit fields
+	if apiModel.CreatedAt != "" {
+		m.CreatedAt = types.StringValue(apiModel.CreatedAt)
+	} else {
+		m.CreatedAt = types.StringNull()
+	}
+	if apiModel.CreatedBy != "" {
+		m.CreatedBy = types.StringValue(apiModel.CreatedBy)
+	} else {
+		m.CreatedBy = types.StringNull()
+	}
+	if apiModel.UpdatedAt != "" {
+		m.UpdatedAt = types.StringValue(apiModel.UpdatedAt)
+	} else {
+		m.UpdatedAt = types.StringNull()
+	}
+	if apiModel.UpdatedBy != "" {
+		m.UpdatedBy = types.StringValue(apiModel.UpdatedBy)
+	} else {
+		m.UpdatedBy = types.StringNull()
 	}
 
 	return diags

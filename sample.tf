@@ -8,130 +8,172 @@ terraform {
 }
 
 provider "unifiedpolicy" {
-  url          = "myinstance.jfrog.io/artifactory"  # Your Artifactory/Platform URL
-  access_token = ""                                 # Set to a valid token, or use a variable (e.g. var.access_token) or env (TF_VAR_access_token)
+  url          = "https://myinstance.jfrog.io"  # Your JFrog Platform URL
+  access_token = var.access_token
+}
+
+variable "access_token" {
+  description = "JFrog access token"
+  type        = string
+  sensitive   = true
+}
+
+locals {
+  # Absolute path prefix — rego paths must be absolute at apply time
+  abs = "${path.module}/"
 }
 
 # ============================================================================
 # EXECUTION ORDER
-# ============================================================================
-# Terraform automatically resolves dependencies and executes resources in the
-# correct order:
-#   1. Templates (no dependencies) → created first
-#   2. Rules (depend on templates via template_id) → created second
-#   3. Lifecycle Policies (depend on rules via rule_ids) → created last
-#
-# The dependency chain is:
-#   Templates → Rules → Lifecycle Policies
-#
-# You can verify the execution order by running: terraform plan
+# Templates → Rules → Lifecycle Policies
 # ============================================================================
 
 # ============================================================================
-# TEMPLATES - Define reusable logic (Rego policies) for rules
+# TEMPLATES
 # ============================================================================
 
-locals {
-  # Path to the directory containing the policies/ folder. Uses path.module so rego paths resolve to absolute paths at apply time.
-  abs = "${path.module}/"
-}
-
-# Template for security vulnerability checks
-resource "unifiedpolicy_template" "security_vulnerability" {
-  name             = "Security Vulnerability Template"
+# Minimal template — no description, no scanners, no parameters
+resource "unifiedpolicy_template" "minimal" {
+  name             = "Minimal Security Template"
   version          = "1.0.0"
-  description      = "Template for checking security vulnerabilities (blocks critical severity)"
   category         = "security"
   data_source_type = "evidence"
-  rego             = "${local.abs}policies/security_vulnerability.rego"
-  # parameters is optional and defaults to empty list []
-  # scanners is optional and defaults to empty list []
+  rego             = "${local.abs}policies/basic_policy.rego"
 }
 
-# Template for high severity vulnerability checks (warning mode)
-resource "unifiedpolicy_template" "high_severity_vulnerability" {
-  name             = "High Severity Vulnerability Template"
-  version          = "1.0.0"
-  description      = "Template for checking high severity vulnerabilities"
+# Full-featured template — all optional fields set
+resource "unifiedpolicy_template" "full_featured" {
+  name             = "Full Featured Security Template"
+  version          = "2.0.0"
+  description      = "Comprehensive template with all fields populated"
   category         = "security"
   data_source_type = "evidence"
-  rego             = "${local.abs}policies/high_severity_vulnerability.rego"
-  # parameters is optional and defaults to empty list []
-  # scanners is optional and defaults to empty list []
+  rego             = "${local.abs}policies/params_policy.rego"
+  scanners         = ["sca", "secrets", "exposures", "contextual_analysis", "malicious_package"]
+
+  parameters = [
+    {
+      name = "severity_threshold"
+      type = "string"
+    },
+    {
+      name = "max_count"
+      type = "int"
+    },
+    {
+      name = "enabled"
+      type = "bool"
+    }
+  ]
 }
 
-# Template for development stage security checks
-resource "unifiedpolicy_template" "dev_security_check" {
-  name             = "Development Security Check Template"
+# Template with noop data source type
+resource "unifiedpolicy_template" "noop_template" {
+  name             = "Noop Data Source Template"
   version          = "1.0.0"
-  description      = "Template for development stage security validation"
+  description      = "Template using noop data source type"
+  category         = "quality"
+  data_source_type = "noop"
+  rego             = "${local.abs}policies/basic_policy.rego"
+}
+
+# Template with legal category
+resource "unifiedpolicy_template" "legal_template" {
+  name             = "Legal Compliance Template"
+  version          = "1.0.0"
+  description      = "Template for legal compliance checks"
+  category         = "legal"
+  data_source_type = "evidence"
+  rego             = "${local.abs}policies/basic_policy.rego"
+}
+
+# Template for high severity checks
+resource "unifiedpolicy_template" "high_severity" {
+  name             = "High Severity Check Template"
+  version          = "1.0.0"
+  description      = "Template for high severity vulnerability detection"
   category         = "security"
   data_source_type = "evidence"
-  rego             = "${local.abs}policies/security_vulnerability.rego"
-  # parameters is optional and defaults to empty list []
-  # scanners is optional and defaults to empty list []
+  rego             = "${local.abs}policies/params_severity_policy.rego"
+
+  parameters = [
+    {
+      name = "severity_threshold"
+      type = "string"
+    }
+  ]
 }
 
 # ============================================================================
-# RULES - Define specific parameter values based on templates
+# RULES
 # ============================================================================
 
-# Rule for production security (uses security_vulnerability template)
-resource "unifiedpolicy_rule" "production_security_rule_1" {
-  name        = "Production Security Rule 1"
-  description = "Rule for blocking critical vulnerabilities in production"
-  template_id = unifiedpolicy_template.security_vulnerability.id
+# Basic rule — no parameters
+resource "unifiedpolicy_rule" "basic_rule" {
+  name        = "Basic Security Rule"
+  description = "Simple rule with no parameters"
+  template_id = unifiedpolicy_template.minimal.id
   parameters  = []
 }
 
-resource "unifiedpolicy_rule" "production_security_rule_2" {
-  name        = "Production Security Rule 2"
-  description = "Additional rule for production security checks"
-  template_id = unifiedpolicy_template.security_vulnerability.id
+# Rule with parameter values
+resource "unifiedpolicy_rule" "parameterized_rule" {
+  name        = "Parameterized Security Rule"
+  description = "Rule with parameter values bound"
+  template_id = unifiedpolicy_template.full_featured.id
+  parameters = [
+    {
+      name  = "severity_threshold"
+      value = "critical"
+    },
+    {
+      name  = "max_count"
+      value = "10"
+    },
+    {
+      name  = "enabled"
+      value = "true"
+    }
+  ]
+}
+
+# Rule with high severity threshold
+resource "unifiedpolicy_rule" "high_severity_rule" {
+  name        = "High Severity Rule"
+  description = "Blocks on high severity findings"
+  template_id = unifiedpolicy_template.high_severity.id
+  parameters = [
+    {
+      name  = "severity_threshold"
+      value = "high"
+    }
+  ]
+}
+
+# Rule for warning mode policies
+resource "unifiedpolicy_rule" "warning_rule" {
+  name        = "Warning Mode Rule"
+  description = "Rule used in warning-mode policies"
+  template_id = unifiedpolicy_template.minimal.id
   parameters  = []
 }
 
-# Rule for QA warning (uses high_severity_vulnerability template)
-resource "unifiedpolicy_rule" "qa_warning_rule" {
-  name        = "QA Warning Rule"
-  description = "Rule for warning on high severity CVEs in QA"
-  template_id = unifiedpolicy_template.high_severity_vulnerability.id
-  parameters  = []
-}
-
-# Rule for staging policy
-resource "unifiedpolicy_rule" "staging_rule" {
-  name        = "Staging Security Rule"
-  description = "Rule for staging environment security checks"
-  template_id = unifiedpolicy_template.security_vulnerability.id
-  parameters  = []
-}
-
-# Rule for development policy
-resource "unifiedpolicy_rule" "dev_security_rule" {
-  name        = "Development Security Rule"
-  description = "Rule for development entry security checks"
-  template_id = unifiedpolicy_template.dev_security_check.id
-  parameters  = []
-}
-
-# Rule for disabled policy
-resource "unifiedpolicy_rule" "disabled_policy_rule" {
-  name        = "Disabled Policy Rule"
-  description = "Rule for disabled policy example"
-  template_id = unifiedpolicy_template.security_vulnerability.id
+# Rule for global scope policy
+resource "unifiedpolicy_rule" "global_rule" {
+  name        = "Global Policy Rule"
+  description = "Rule applied globally across all projects"
+  template_id = unifiedpolicy_template.minimal.id
   parameters  = []
 }
 
 # ============================================================================
-# LIFECYCLE POLICIES - Define enforcement rules for SDLC stages
+# LIFECYCLE POLICIES
 # ============================================================================
 
-# Example 1: Lifecycle Policy with Project Scope - Block Mode
-# This policy blocks promotion to production when critical CVEs are detected
-resource "unifiedpolicy_lifecycle_policy" "production_security" {
-  name        = "Production Security Policy"
-  description = "Block promotion on Critical CVEs"
+# Example 1: Project scope — single project key — block mode
+resource "unifiedpolicy_lifecycle_policy" "project_single_key" {
+  name        = "Project Single Key Policy"
+  description = "Block promotion on critical CVEs in project aa"
   enabled     = true
   mode        = "block"
 
@@ -145,47 +187,62 @@ resource "unifiedpolicy_lifecycle_policy" "production_security" {
 
   scope {
     type         = "project"
-    project_keys = ["my-project"]  # Use a project key that exists in your instance; or use project.<name>.key if you use the jfrog/project provider
+    project_keys = ["aa"]
   }
 
-  # NOTE: API currently limits rule_ids to exactly 1 rule per policy (maxItems: 1)
-  # See: unified-policy/api/v1/pap.yaml PolicyRules schema
-  rule_ids = [
-    unifiedpolicy_rule.production_security_rule_1.id
-    # unifiedpolicy_rule.production_security_rule_2.id  # API limitation: only 1 rule per policy allowed
-  ]
+  rule_ids = [unifiedpolicy_rule.basic_rule.id]
 }
 
-# Example 2: Lifecycle Policy with Application Scope - Warning Mode
-# This policy warns on high severity CVEs in QA stage but allows promotion
-resource "unifiedpolicy_lifecycle_policy" "qa_warning" {
-  name        = "QA Warning Policy"
-  description = "Warn on High severity CVEs in QA stage"
+# Example 2: Project scope — multiple project keys (up to 10)
+resource "unifiedpolicy_lifecycle_policy" "project_multi_keys" {
+  name        = "Project Multi-Key Policy"
+  description = "Block promotion across multiple projects"
+  enabled     = true
+  mode        = "block"
+
+  action {
+    type = "certify_to_gate"
+    stage {
+      key  = "PROD"
+      gate = "release"
+    }
+  }
+
+  scope {
+    type         = "project"
+    project_keys = ["aa", "bb", "cc"]
+  }
+
+  rule_ids = [unifiedpolicy_rule.parameterized_rule.id]
+}
+
+# Example 3: Application scope — application keys only
+resource "unifiedpolicy_lifecycle_policy" "app_scope" {
+  name        = "Application Scope Policy"
+  description = "Warn on high severity CVEs in QA"
   enabled     = true
   mode        = "warning"
 
   action {
     type = "certify_to_gate"
     stage {
-      key  = "my-project-QA"  # Project-scoped stage: format is {projectKey}-{STAGE_NAME}
+      key  = "QA"
       gate = "exit"
     }
   }
 
   scope {
     type             = "application"
-    application_keys = ["my-web-app"]
+    application_keys = ["aa"]
   }
 
-  rule_ids = [unifiedpolicy_rule.qa_warning_rule.id]
+  rule_ids = [unifiedpolicy_rule.warning_rule.id]
 }
 
-# Example 3: Lifecycle Policy with Application Labels
-# This policy uses application labels to target specific applications
-# Note: application_keys is still required even when using labels
-resource "unifiedpolicy_lifecycle_policy" "staging_policy" {
-  name        = "Staging Policy"
-  description = "Policy for staging environment applications"
+# Example 4: Application scope — with application labels
+resource "unifiedpolicy_lifecycle_policy" "app_scope_with_labels" {
+  name        = "Application Labels Policy"
+  description = "Policy targeting specific application labels"
   enabled     = true
   mode        = "block"
 
@@ -199,65 +256,202 @@ resource "unifiedpolicy_lifecycle_policy" "staging_policy" {
 
   scope {
     type             = "application"
-    application_keys = ["my-app"]
-    # application_labels {
-    #   key   = "environment"
-    #   value = "staging"
-    # }
-    # application_labels {
-    #   key   = "team"
-    #   value = "platform"
-    # }
+    application_keys = ["bb"]
+    application_labels {
+      key   = "environment"
+      value = "production"
+    }
+    application_labels {
+      key   = "team"
+      value = "platform"
+    }
   }
 
-  rule_ids = [unifiedpolicy_rule.staging_rule.id]
+  rule_ids = [unifiedpolicy_rule.high_severity_rule.id]
 }
 
-# Example 4: Lifecycle Policy for Development Stage
-# This policy enforces rules at the entry gate of the development stage
-resource "unifiedpolicy_lifecycle_policy" "dev_policy" {
-  name        = "Development Entry Policy"
-  description = "Enforce security checks at development entry"
+# Example 5: Global scope — applies across all projects/applications
+resource "unifiedpolicy_lifecycle_policy" "global_scope" {
+  name        = "Global Security Policy"
+  description = "Policy applied globally to all projects and applications"
   enabled     = true
   mode        = "warning"
 
   action {
     type = "certify_to_gate"
     stage {
-      key  = "dev-project-DEV"  # Project-scoped stage: format is {projectKey}-{STAGE_NAME}
-      gate = "entry"
+      key  = "PROD"
+      gate = "release"
     }
   }
 
   scope {
-    type         = "project"
-    project_keys = ["dev-project"]  # Use a project key that exists; or use project.<name>.key if you use the jfrog/project provider
+    type = "global"
   }
 
-  rule_ids = [unifiedpolicy_rule.dev_security_rule.id]
+  rule_ids = [unifiedpolicy_rule.global_rule.id]
 }
 
-# Example 5: Disabled Lifecycle Policy
-# This policy is defined but not active
+# Example 6: Disabled policy
 resource "unifiedpolicy_lifecycle_policy" "disabled_policy" {
   name        = "Disabled Policy"
-  description = "This policy is currently disabled"
+  description = "Policy defined but not yet active"
   enabled     = false
   mode        = "block"
 
   action {
     type = "certify_to_gate"
     stage {
-      key  = "my-project-QA"  # Project-scoped stage: format is {projectKey}-{STAGE_NAME}
-      gate = "exit"
+      key  = "PROD"
+      gate = "release"
     }
   }
 
   scope {
-    type             = "application"
-    application_keys = ["test-app"]
+    type         = "project"
+    project_keys = ["dd"]
   }
 
-  rule_ids = [unifiedpolicy_rule.disabled_policy_rule.id]
+  rule_ids = [unifiedpolicy_rule.basic_rule.id]
 }
 
+# Example 7: Entry gate policy
+resource "unifiedpolicy_lifecycle_policy" "entry_gate_policy" {
+  name        = "Dev Entry Gate Policy"
+  description = "Enforce security checks at development entry gate"
+  enabled     = true
+  mode        = "block"
+
+  action {
+    type = "certify_to_gate"
+    stage {
+      key  = "DEV"
+      gate = "entry"
+    }
+  }
+
+  scope {
+    type         = "project"
+    project_keys = ["aa"]
+  }
+
+  rule_ids = [unifiedpolicy_rule.basic_rule.id]
+}
+
+# ============================================================================
+# DATA SOURCES
+# ============================================================================
+
+# Read a single template by ID
+data "unifiedpolicy_template" "read_template" {
+  id = unifiedpolicy_template.full_featured.id
+}
+
+# List all templates filtered by category
+data "unifiedpolicy_templates" "security_templates" {
+  category   = "security"
+  sort_by    = "name"
+  sort_order = "asc"
+  limit      = 100
+}
+
+# List templates by multiple IDs
+data "unifiedpolicy_templates" "specific_templates" {
+  ids = [
+    unifiedpolicy_template.minimal.id,
+    unifiedpolicy_template.full_featured.id,
+  ]
+}
+
+# Read a single rule by ID
+data "unifiedpolicy_rule" "read_rule" {
+  id = unifiedpolicy_rule.parameterized_rule.id
+}
+
+# List all rules filtered by name
+data "unifiedpolicy_rules" "all_rules" {
+  sort_by    = "name"
+  sort_order = "asc"
+}
+
+# List rules filtered by data source type
+data "unifiedpolicy_rules" "evidence_rules" {
+  template_data_source = "evidence"
+  limit                = 50
+}
+
+# Read a single lifecycle policy by ID
+data "unifiedpolicy_lifecycle_policy" "read_policy" {
+  id = unifiedpolicy_lifecycle_policy.project_single_key.id
+}
+
+# List all lifecycle policies
+data "unifiedpolicy_lifecycle_policies" "all_policies" {
+  sort_by    = "name"
+  sort_order = "asc"
+}
+
+# List policies filtered by scope type (project)
+data "unifiedpolicy_lifecycle_policies" "project_policies" {
+  scope_type = "project"
+  enabled    = true
+  mode       = "block"
+}
+
+# List global policies
+data "unifiedpolicy_lifecycle_policies" "global_policies" {
+  scope_type = "global"
+}
+
+# List policies by project key with hierarchical flag
+data "unifiedpolicy_lifecycle_policies" "hierarchical_policies" {
+  project_key  = "aa"
+  hierarchical = true
+}
+
+# ============================================================================
+# OUTPUTS — Show computed audit fields
+# ============================================================================
+
+output "template_audit" {
+  description = "Template audit information"
+  value = {
+    id         = unifiedpolicy_template.full_featured.id
+    created_at = unifiedpolicy_template.full_featured.created_at
+    created_by = unifiedpolicy_template.full_featured.created_by
+    updated_at = unifiedpolicy_template.full_featured.updated_at
+    updated_by = unifiedpolicy_template.full_featured.updated_by
+  }
+}
+
+output "rule_audit" {
+  description = "Rule audit information"
+  value = {
+    id         = unifiedpolicy_rule.parameterized_rule.id
+    created_at = unifiedpolicy_rule.parameterized_rule.created_at
+    created_by = unifiedpolicy_rule.parameterized_rule.created_by
+    updated_at = unifiedpolicy_rule.parameterized_rule.updated_at
+    updated_by = unifiedpolicy_rule.parameterized_rule.updated_by
+  }
+}
+
+output "policy_audit" {
+  description = "Lifecycle policy audit information"
+  value = {
+    id         = unifiedpolicy_lifecycle_policy.global_scope.id
+    created_at = unifiedpolicy_lifecycle_policy.global_scope.created_at
+    created_by = unifiedpolicy_lifecycle_policy.global_scope.created_by
+    updated_at = unifiedpolicy_lifecycle_policy.global_scope.updated_at
+    updated_by = unifiedpolicy_lifecycle_policy.global_scope.updated_by
+  }
+}
+
+output "all_security_templates" {
+  description = "All security templates from list datasource"
+  value       = data.unifiedpolicy_templates.security_templates.templates
+}
+
+output "all_policies_count" {
+  description = "Total number of policies returned"
+  value       = data.unifiedpolicy_lifecycle_policies.all_policies.page_size
+}

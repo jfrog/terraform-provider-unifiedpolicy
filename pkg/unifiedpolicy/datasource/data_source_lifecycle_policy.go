@@ -113,7 +113,7 @@ func (d *LifecyclePolicyDataSource) Schema(ctx context.Context, req datasource.S
 				Computed:    true,
 				Attributes: map[string]schema.Attribute{
 					"type": schema.StringAttribute{
-						Description: "Scope type. Either 'project' or 'application'.",
+						Description: "Scope type. One of: 'global', 'project', 'application'.",
 						Computed:    true,
 					},
 					"project_keys": schema.ListAttribute{

@@ -13,11 +13,33 @@ Provides a Unified Policy rule resource. This resource allows you to create, upd
 ## Example Usage
 
 ```terraform
+resource "unifiedpolicy_template" "example" {
+  name             = "Example Security Template"
+  version          = "1.0.0"
+  description      = "Example template for security checks"
+  category         = "security"
+  data_source_type = "evidence"
+  rego             = "${path.module}/policy.rego"
+
+  parameters = [
+    {
+      name = "severity_threshold"
+      type = "string"
+    }
+  ]
+}
+
 resource "unifiedpolicy_rule" "example" {
   name        = "Example Rule"
-  description = "Example rule for import and usage"
-  template_id = "REPLACE_WITH_TEMPLATE_ID"
-  parameters  = []
+  description = "Example rule bound to the template above"
+  template_id = unifiedpolicy_template.example.id
+
+  parameters = [
+    {
+      name  = "severity_threshold"
+      value = "critical"
+    }
+  ]
 }
 ```
 
@@ -37,7 +59,11 @@ resource "unifiedpolicy_rule" "example" {
 
 ### Read-Only
 
+- `created_at` (String) Timestamp when the rule was created.
+- `created_by` (String) User who created the rule.
 - `id` (String) The ID of the rule. This is computed and assigned by the API.
+- `updated_at` (String) Timestamp when the rule was last updated.
+- `updated_by` (String) User who last updated the rule.
 
 <a id="nestedatt--parameters"></a>
 ### Nested Schema for `parameters`

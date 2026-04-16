@@ -72,6 +72,10 @@ type TemplateResourceModel struct {
 	Rego           types.String `tfsdk:"rego"` // Path to .rego file (or Rego code when reading from API)
 	Scanners       types.List   `tfsdk:"scanners"`
 	IsCustom       types.Bool   `tfsdk:"is_custom"`
+	CreatedAt      types.String `tfsdk:"created_at"`
+	CreatedBy      types.String `tfsdk:"created_by"`
+	UpdatedAt      types.String `tfsdk:"updated_at"`
+	UpdatedBy      types.String `tfsdk:"updated_by"`
 }
 
 type TemplateParameterModel struct {
@@ -423,13 +427,13 @@ func (r *TemplateResource) Schema(ctx context.Context, req resource.SchemaReques
 				},
 			},
 			"data_source_type": schema.StringAttribute{
-				Description: "The type of data source the template expects. For creation only 'noop' and 'evidence' are allowed; 'xray' may appear when reading system templates.",
+				Description: "The type of data source the template expects. For creation only 'noop' and 'evidence' are allowed; 'public_vulnerability' may appear when reading system templates.",
 				Required:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 				Validators: []validator.String{
-					stringvalidator.OneOf("noop", "evidence", "xray"),
+					stringvalidator.OneOf("noop", "evidence", "public_vulnerability"),
 				},
 			},
 			"parameters": schema.ListNestedAttribute{
@@ -495,6 +499,28 @@ func (r *TemplateResource) Schema(ctx context.Context, req resource.SchemaReques
 			},
 			"is_custom": schema.BoolAttribute{
 				Description: "Indicates whether this is a custom template (created by user) or a system template.",
+				Computed:    true,
+			},
+			"created_at": schema.StringAttribute{
+				Description: "Timestamp when the template was created.",
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"created_by": schema.StringAttribute{
+				Description: "User who created the template.",
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"updated_at": schema.StringAttribute{
+				Description: "Timestamp when the template was last updated.",
+				Computed:    true,
+			},
+			"updated_by": schema.StringAttribute{
+				Description: "User who last updated the template.",
 				Computed:    true,
 			},
 		},
@@ -703,6 +729,28 @@ func (m *TemplateResourceModel) fromAPIModel(ctx context.Context, apiModel Templ
 
 	// Set is_custom
 	m.IsCustom = types.BoolValue(apiModel.IsCustom)
+
+	// Audit fields
+	if apiModel.CreatedAt != "" {
+		m.CreatedAt = types.StringValue(apiModel.CreatedAt)
+	} else {
+		m.CreatedAt = types.StringNull()
+	}
+	if apiModel.CreatedBy != "" {
+		m.CreatedBy = types.StringValue(apiModel.CreatedBy)
+	} else {
+		m.CreatedBy = types.StringNull()
+	}
+	if apiModel.UpdatedAt != "" {
+		m.UpdatedAt = types.StringValue(apiModel.UpdatedAt)
+	} else {
+		m.UpdatedAt = types.StringNull()
+	}
+	if apiModel.UpdatedBy != "" {
+		m.UpdatedBy = types.StringValue(apiModel.UpdatedBy)
+	} else {
+		m.UpdatedBy = types.StringNull()
+	}
 
 	return diags
 }

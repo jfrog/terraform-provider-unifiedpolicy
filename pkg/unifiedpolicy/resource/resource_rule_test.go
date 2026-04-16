@@ -71,6 +71,10 @@ func TestAccRule_basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(resourceName, "template_id"),
 					resource.TestCheckResourceAttr(resourceName, "parameters.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "is_custom", "true"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_by"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_by"),
 				),
 			},
 		},
@@ -889,6 +893,123 @@ func TestAccRule_updateParametersAddThenRemove(t *testing.T) {
 			{
 				Config: config2,
 				Check:  resource.TestCheckResourceAttr(resourceName, "parameters.#", "0"),
+			},
+		},
+	})
+}
+
+// TestAccRule_auditFieldsPopulated verifies all four audit fields are set after create and preserved after update.
+func TestAccRule_auditFieldsPopulated(t *testing.T) {
+	acctest.SkipIfNotAcc(t)
+	acctest.PreCheck(t)
+
+	_, fqrn, name := testutil.MkNames("test-rule-audit-", "unifiedpolicy_rule")
+	resourceName := fmt.Sprintf("unifiedpolicy_rule.%s", name)
+	_, _, templateName := testutil.MkNames("test-template-", "template")
+	regoPath := acctest.RegoFixturePath(t, "basic_policy.rego")
+
+	base := fmt.Sprintf(`
+		resource "unifiedpolicy_template" "test" {
+			name             = "%s"
+			version          = "1.0.0"
+			category         = "security"
+			data_source_type = "evidence"
+			rego             = %q
+			parameters = []
+		}
+	`, templateName, regoPath)
+
+	config1 := fmt.Sprintf(`
+		%s
+		resource "unifiedpolicy_rule" "%s" {
+			name        = "%s"
+			description = "Audit test initial"
+			template_id = unifiedpolicy_template.test.id
+			parameters  = []
+		}
+	`, base, name, name)
+
+	config2 := fmt.Sprintf(`
+		%s
+		resource "unifiedpolicy_rule" "%s" {
+			name        = "%s"
+			description = "Audit test updated"
+			template_id = unifiedpolicy_template.test.id
+			parameters  = []
+		}
+	`, base, name, name)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		CheckDestroy:             testAccCheckRuleDestroy(fqrn),
+		Steps: []resource.TestStep{
+			{
+				Config: config1,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_by"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_by"),
+				),
+			},
+			{
+				Config: config2,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_by"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_by"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccRule_importWithAuditFields verifies audit fields are preserved after import.
+func TestAccRule_importWithAuditFields(t *testing.T) {
+	acctest.SkipIfNotAcc(t)
+	acctest.PreCheck(t)
+
+	_, fqrn, name := testutil.MkNames("test-rule-import-audit-", "unifiedpolicy_rule")
+	resourceName := fmt.Sprintf("unifiedpolicy_rule.%s", name)
+	_, _, templateName := testutil.MkNames("test-template-", "template")
+	regoPath := acctest.RegoFixturePath(t, "basic_policy.rego")
+
+	config := fmt.Sprintf(`
+		resource "unifiedpolicy_template" "test" {
+			name             = "%s"
+			version          = "1.0.0"
+			category         = "security"
+			data_source_type = "evidence"
+			rego             = %q
+			parameters = []
+		}
+
+		resource "unifiedpolicy_rule" "%s" {
+			name        = "%s"
+			description = "Rule for import audit test"
+			template_id = unifiedpolicy_template.test.id
+			parameters  = []
+		}
+	`, templateName, regoPath, name, name)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		CheckDestroy:             testAccCheckRuleDestroy(fqrn),
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_by"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})

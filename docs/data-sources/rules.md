@@ -28,7 +28,7 @@ Returns a list of Unified Policy rules with support for filtering, pagination, a
 - `sort_by` (String) Sort field: 'name', 'created_at'.
 - `sort_order` (String) Sort direction: 'asc' or 'desc'.
 - `template_category` (String) Filter by template category (e.g., 'security', 'quality').
-- `template_data_source` (String) Filter by template data source (e.g., 'xray', 'catalog').
+- `template_data_source` (String) Filter by template data source. One of: noop, evidence, public_vulnerability.
 
 ### Read-Only
 
@@ -42,6 +42,7 @@ Returns a list of Unified Policy rules with support for filtering, pagination, a
 Read-Only:
 
 - `created_at` (String) Timestamp when the rule was created.
+- `created_by` (String) User who created the rule.
 - `description` (String) Free-text description of the rule purpose.
 - `id` (String) The ID of the rule.
 - `is_custom` (Boolean) Whether the rule is user-defined (true) or predefined (false).
@@ -49,6 +50,7 @@ Read-Only:
 - `parameters` (Attributes List) Array of parameter name/value pairs. (see [below for nested schema](#nestedatt--rules--parameters))
 - `template_id` (String) The ID of the template the rule is based on.
 - `updated_at` (String) Timestamp when the rule was last updated.
+- `updated_by` (String) User who last updated the rule.
 
 <a id="nestedatt--rules--parameters"></a>
 ### Nested Schema for `rules.parameters`

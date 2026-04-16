@@ -142,8 +142,16 @@ func (d *TemplatesDataSource) Schema(ctx context.Context, req datasource.SchemaR
 							Description: "Timestamp when the template was created.",
 							Computed:    true,
 						},
+						"created_by": schema.StringAttribute{
+							Description: "User who created the template.",
+							Computed:    true,
+						},
 						"updated_at": schema.StringAttribute{
 							Description: "Timestamp when the template was last updated.",
+							Computed:    true,
+						},
+						"updated_by": schema.StringAttribute{
+							Description: "User who last updated the template.",
 							Computed:    true,
 						},
 					},
@@ -272,7 +280,9 @@ func (m *TemplatesDataSourceModel) FromAPIModel(ctx context.Context, apiModel re
 		"data_source_type": types.StringType,
 		"is_custom":        types.BoolType,
 		"created_at":       types.StringType,
+		"created_by":       types.StringType,
 		"updated_at":       types.StringType,
+		"updated_by":       types.StringType,
 	}
 
 	for i, template := range apiModel.Items {
@@ -297,10 +307,22 @@ func (m *TemplatesDataSourceModel) FromAPIModel(ctx context.Context, apiModel re
 			templateAttrs["created_at"] = types.StringNull()
 		}
 
+		if template.CreatedBy != "" {
+			templateAttrs["created_by"] = types.StringValue(template.CreatedBy)
+		} else {
+			templateAttrs["created_by"] = types.StringNull()
+		}
+
 		if template.UpdatedAt != "" {
 			templateAttrs["updated_at"] = types.StringValue(template.UpdatedAt)
 		} else {
 			templateAttrs["updated_at"] = types.StringNull()
+		}
+
+		if template.UpdatedBy != "" {
+			templateAttrs["updated_by"] = types.StringValue(template.UpdatedBy)
+		} else {
+			templateAttrs["updated_by"] = types.StringNull()
 		}
 
 		templateObj, templateDiags := types.ObjectValue(templateAttrTypes, templateAttrs)

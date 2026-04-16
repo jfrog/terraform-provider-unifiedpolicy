@@ -100,6 +100,10 @@ func TestAccLifecyclePolicy_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "scope.project_keys.0", acctest.LifecyclePolicyProjectKey1),
 					resource.TestCheckResourceAttr(resourceName, "rule_ids.#", "1"),
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_by"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_by"),
 				),
 			},
 		},
@@ -710,6 +714,364 @@ func TestAccLifecyclePolicy_createDuplicateName(t *testing.T) {
 			{
 				Config:      config,
 				ExpectError: regexp.MustCompile(`Policy Already Exists|already exists|Conflict|unique|duplicate`),
+			},
+		},
+	})
+}
+
+// TestAccLifecyclePolicy_withGlobalScope tests creating a lifecycle policy with global scope type.
+func TestAccLifecyclePolicy_withGlobalScope(t *testing.T) {
+	acctest.SkipIfNotAcc(t)
+	acctest.PreCheck(t)
+
+	_, fqrn, name := testutil.MkNames("test-policy-global-", "unifiedpolicy_lifecycle_policy")
+	resourceName := fmt.Sprintf("unifiedpolicy_lifecycle_policy.%s", name)
+
+	_, _, templateName := testutil.MkNames("test-template-", "template")
+	_, _, ruleName := testutil.MkNames("test-rule-", "unifiedpolicy_rule")
+	regoPath := acctest.RegoFixturePath(t, "basic_policy.rego")
+
+	config := fmt.Sprintf(`
+		resource "unifiedpolicy_template" "test" {
+			name             = "%s"
+			version          = "1.0.0"
+			description      = "Test template for global scope policy"
+			category         = "security"
+			data_source_type = "evidence"
+			rego             = %q
+			parameters = []
+		}
+
+		resource "unifiedpolicy_rule" "test" {
+			name        = "%s"
+			template_id = unifiedpolicy_template.test.id
+			parameters  = []
+		}
+
+		resource "unifiedpolicy_lifecycle_policy" "%s" {
+			name        = "%s"
+			description = "Global scope policy"
+			enabled     = true
+			mode        = "warning"
+
+			action {
+				type = "certify_to_gate"
+				stage {
+					key  = "PROD"
+					gate = "release"
+				}
+			}
+
+			scope {
+				type = "global"
+			}
+
+			rule_ids = [unifiedpolicy_rule.test.id]
+		}
+	`, templateName, regoPath, ruleName, name, name)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		CheckDestroy:             testAccCheckLifecyclePolicyDestroy(fqrn),
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "name", name),
+					resource.TestCheckResourceAttr(resourceName, "scope.type", "global"),
+					resource.TestCheckResourceAttr(resourceName, "mode", "warning"),
+					resource.TestCheckResourceAttrSet(resourceName, "id"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_by"),
+				),
+			},
+			// Import round-trip
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// TestAccLifecyclePolicy_withMultipleProjectKeys tests creating a policy with up to 3 project keys.
+func TestAccLifecyclePolicy_withMultipleProjectKeys(t *testing.T) {
+	acctest.SkipIfNotAcc(t)
+	acctest.PreCheck(t)
+
+	_, fqrn, name := testutil.MkNames("test-policy-multi-keys-", "unifiedpolicy_lifecycle_policy")
+	resourceName := fmt.Sprintf("unifiedpolicy_lifecycle_policy.%s", name)
+
+	_, _, templateName := testutil.MkNames("test-template-", "template")
+	_, _, ruleName := testutil.MkNames("test-rule-", "unifiedpolicy_rule")
+	regoPath := acctest.RegoFixturePath(t, "basic_policy.rego")
+
+	config := fmt.Sprintf(`
+		resource "unifiedpolicy_template" "test" {
+			name             = "%s"
+			version          = "1.0.0"
+			description      = "Test template for multi-key policy"
+			category         = "security"
+			data_source_type = "evidence"
+			rego             = %q
+			parameters = []
+		}
+
+		resource "unifiedpolicy_rule" "test" {
+			name        = "%s"
+			template_id = unifiedpolicy_template.test.id
+			parameters  = []
+		}
+
+		resource "unifiedpolicy_lifecycle_policy" "%s" {
+			name        = "%s"
+			description = "Policy with multiple project keys"
+			enabled     = true
+			mode        = "block"
+
+			action {
+				type = "certify_to_gate"
+				stage {
+					key  = "PROD"
+					gate = "release"
+				}
+			}
+
+			scope {
+				type         = "project"
+				project_keys = ["%s", "%s", "%s"]
+			}
+
+			rule_ids = [unifiedpolicy_rule.test.id]
+		}
+	`, templateName, regoPath, ruleName, name, name,
+		acctest.LifecyclePolicyProjectKey1, acctest.LifecyclePolicyProjectKey2, acctest.LifecyclePolicyProjectKey3)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		CheckDestroy:             testAccCheckLifecyclePolicyDestroy(fqrn),
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "scope.type", "project"),
+					resource.TestCheckResourceAttr(resourceName, "scope.project_keys.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "scope.project_keys.0", acctest.LifecyclePolicyProjectKey1),
+					resource.TestCheckResourceAttr(resourceName, "scope.project_keys.1", acctest.LifecyclePolicyProjectKey2),
+					resource.TestCheckResourceAttr(resourceName, "scope.project_keys.2", acctest.LifecyclePolicyProjectKey3),
+				),
+			},
+		},
+	})
+}
+
+// TestAccLifecyclePolicy_auditFieldsPopulated verifies all four audit fields survive create + update.
+func TestAccLifecyclePolicy_auditFieldsPopulated(t *testing.T) {
+	acctest.SkipIfNotAcc(t)
+	acctest.PreCheck(t)
+
+	_, fqrn, name := testutil.MkNames("test-policy-audit-", "unifiedpolicy_lifecycle_policy")
+	resourceName := fmt.Sprintf("unifiedpolicy_lifecycle_policy.%s", name)
+
+	_, _, templateName := testutil.MkNames("test-template-", "template")
+	_, _, ruleName := testutil.MkNames("test-rule-", "unifiedpolicy_rule")
+	regoPath := acctest.RegoFixturePath(t, "basic_policy.rego")
+
+	base := fmt.Sprintf(`
+		resource "unifiedpolicy_template" "test" {
+			name             = "%s"
+			version          = "1.0.0"
+			category         = "security"
+			data_source_type = "evidence"
+			rego             = %q
+			parameters = []
+		}
+		resource "unifiedpolicy_rule" "test" {
+			name        = "%s"
+			template_id = unifiedpolicy_template.test.id
+			parameters  = []
+		}
+	`, templateName, regoPath, ruleName)
+
+	config1 := fmt.Sprintf(`
+		%s
+		resource "unifiedpolicy_lifecycle_policy" "%s" {
+			name        = "%s"
+			description = "Audit initial"
+			enabled     = true
+			mode        = "block"
+			action {
+				type = "certify_to_gate"
+				stage { key = "PROD"; gate = "release" }
+			}
+			scope {
+				type         = "project"
+				project_keys = ["%s"]
+			}
+			rule_ids = [unifiedpolicy_rule.test.id]
+		}
+	`, base, name, name, acctest.LifecyclePolicyProjectKey1)
+
+	config2 := fmt.Sprintf(`
+		%s
+		resource "unifiedpolicy_lifecycle_policy" "%s" {
+			name        = "%s"
+			description = "Audit updated"
+			enabled     = false
+			mode        = "warning"
+			action {
+				type = "certify_to_gate"
+				stage { key = "PROD"; gate = "release" }
+			}
+			scope {
+				type         = "project"
+				project_keys = ["%s"]
+			}
+			rule_ids = [unifiedpolicy_rule.test.id]
+		}
+	`, base, name, name, acctest.LifecyclePolicyProjectKey1)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		CheckDestroy:             testAccCheckLifecyclePolicyDestroy(fqrn),
+		Steps: []resource.TestStep{
+			{
+				Config: config1,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_by"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_by"),
+				),
+			},
+			{
+				Config: config2,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_by"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "updated_by"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccLifecyclePolicy_withEntryGate tests entry gate configuration.
+func TestAccLifecyclePolicy_withEntryGate(t *testing.T) {
+	acctest.SkipIfNotAcc(t)
+	acctest.PreCheck(t)
+
+	_, fqrn, name := testutil.MkNames("test-policy-entry-", "unifiedpolicy_lifecycle_policy")
+	resourceName := fmt.Sprintf("unifiedpolicy_lifecycle_policy.%s", name)
+
+	_, _, templateName := testutil.MkNames("test-template-", "template")
+	_, _, ruleName := testutil.MkNames("test-rule-", "unifiedpolicy_rule")
+	regoPath := acctest.RegoFixturePath(t, "basic_policy.rego")
+
+	config := fmt.Sprintf(`
+		resource "unifiedpolicy_template" "test" {
+			name             = "%s"
+			version          = "1.0.0"
+			category         = "security"
+			data_source_type = "evidence"
+			rego             = %q
+			parameters = []
+		}
+		resource "unifiedpolicy_rule" "test" {
+			name        = "%s"
+			template_id = unifiedpolicy_template.test.id
+			parameters  = []
+		}
+		resource "unifiedpolicy_lifecycle_policy" "%s" {
+			name    = "%s"
+			enabled = true
+			mode    = "block"
+			action {
+				type = "certify_to_gate"
+				stage { key = "DEV"; gate = "entry" }
+			}
+			scope {
+				type         = "project"
+				project_keys = ["%s"]
+			}
+			rule_ids = [unifiedpolicy_rule.test.id]
+		}
+	`, templateName, regoPath, ruleName, name, name, acctest.LifecyclePolicyProjectKey1)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		CheckDestroy:             testAccCheckLifecyclePolicyDestroy(fqrn),
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "action.stage.key", "DEV"),
+					resource.TestCheckResourceAttr(resourceName, "action.stage.gate", "entry"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccLifecyclePolicy_disabled tests creating a policy in disabled state.
+func TestAccLifecyclePolicy_disabled(t *testing.T) {
+	acctest.SkipIfNotAcc(t)
+	acctest.PreCheck(t)
+
+	_, fqrn, name := testutil.MkNames("test-policy-disabled-", "unifiedpolicy_lifecycle_policy")
+	resourceName := fmt.Sprintf("unifiedpolicy_lifecycle_policy.%s", name)
+
+	_, _, templateName := testutil.MkNames("test-template-", "template")
+	_, _, ruleName := testutil.MkNames("test-rule-", "unifiedpolicy_rule")
+	regoPath := acctest.RegoFixturePath(t, "basic_policy.rego")
+
+	config := fmt.Sprintf(`
+		resource "unifiedpolicy_template" "test" {
+			name             = "%s"
+			version          = "1.0.0"
+			category         = "security"
+			data_source_type = "evidence"
+			rego             = %q
+			parameters = []
+		}
+		resource "unifiedpolicy_rule" "test" {
+			name        = "%s"
+			template_id = unifiedpolicy_template.test.id
+			parameters  = []
+		}
+		resource "unifiedpolicy_lifecycle_policy" "%s" {
+			name    = "%s"
+			enabled = false
+			mode    = "block"
+			action {
+				type = "certify_to_gate"
+				stage { key = "PROD"; gate = "release" }
+			}
+			scope {
+				type         = "project"
+				project_keys = ["%s"]
+			}
+			rule_ids = [unifiedpolicy_rule.test.id]
+		}
+	`, templateName, regoPath, ruleName, name, name, acctest.LifecyclePolicyProjectKey4)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		CheckDestroy:             testAccCheckLifecyclePolicyDestroy(fqrn),
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "enabled", "false"),
+					resource.TestCheckResourceAttr(resourceName, "mode", "block"),
+				),
 			},
 		},
 	})

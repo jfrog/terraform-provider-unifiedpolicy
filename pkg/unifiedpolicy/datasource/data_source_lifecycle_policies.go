@@ -57,6 +57,8 @@ type LifecyclePoliciesDataSourceModel struct {
 	ProjectKey        types.String `tfsdk:"project_key"`
 	ApplicationKeys   types.List   `tfsdk:"application_keys"`
 	ApplicationLabels types.Map    `tfsdk:"application_labels"`
+	Hierarchical      types.Bool   `tfsdk:"hierarchical"`
+	RuleNames         types.List   `tfsdk:"rule_names"`
 	Expand            types.String `tfsdk:"expand"`
 	Page              types.Int64  `tfsdk:"page"`
 	Limit             types.Int64  `tfsdk:"limit"`
@@ -131,10 +133,10 @@ func (d *LifecyclePoliciesDataSource) Schema(ctx context.Context, req datasource
 				Optional:    true,
 			},
 			"scope_type": schema.StringAttribute{
-				Description: "Filter by scope type. Must be either 'project' or 'application'.",
+				Description: "Filter by scope type. Must be one of: 'global', 'project', 'application'.",
 				Optional:    true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("project", "application"),
+					stringvalidator.OneOf("global", "project", "application"),
 				},
 			},
 			"stage_keys": schema.ListAttribute{
@@ -176,6 +178,15 @@ func (d *LifecyclePoliciesDataSource) Schema(ctx context.Context, req datasource
 				ElementType: types.StringType,
 				Optional:    true,
 			},
+			"hierarchical": schema.BoolAttribute{
+				Description: "When true, includes policies from parent scopes (e.g., global policies when querying project scope).",
+				Optional:    true,
+			},
+			"rule_names": schema.ListAttribute{
+				Description: "Filter by rule names. Supports wildcard patterns. Sent as repeated `rule_name` query parameters.",
+				ElementType: types.StringType,
+				Optional:    true,
+			},
 			"expand": schema.StringAttribute{
 				Description: "Use 'rules' to include rule summaries in the response.",
 				Optional:    true,
@@ -188,12 +199,15 @@ func (d *LifecyclePoliciesDataSource) Schema(ctx context.Context, req datasource
 				Optional:    true,
 			},
 			"limit": schema.Int64Attribute{
-				Description: "Items per page (1-250, default: 100).",
+				Description: "Items per page (1-1000, default: 100).",
 				Optional:    true,
 			},
 			"sort_by": schema.StringAttribute{
-				Description: "Sort field (e.g., 'name', 'created_at').",
+				Description: "Sort field. One of: 'name', 'enabled', 'mode', 'resource', 'action', 'created_at'.",
 				Optional:    true,
+				Validators: []validator.String{
+					stringvalidator.OneOf("name", "enabled", "mode", "resource", "action", "created_at"),
+				},
 			},
 			"sort_order": schema.StringAttribute{
 				Description: "Sort order. Must be either 'asc' or 'desc'.",
@@ -393,6 +407,14 @@ func (d *LifecyclePoliciesDataSource) Read(ctx context.Context, req datasource.R
 			}
 		}
 	}
+	// rule_name (array form, explode)
+	if !data.RuleNames.IsNull() && len(data.RuleNames.Elements()) > 0 {
+		for _, e := range data.RuleNames.Elements() {
+			if s, ok := e.(types.String); ok && !s.IsNull() {
+				queryValues.Add("rule_name", s.ValueString())
+			}
+		}
+	}
 	if len(queryValues) > 0 {
 		request.SetQueryParamsFromValues(queryValues)
 	}
@@ -412,6 +434,9 @@ func (d *LifecyclePoliciesDataSource) Read(ctx context.Context, req datasource.R
 	}
 	if !data.ProjectKey.IsNull() {
 		request.SetQueryParam("project_key", data.ProjectKey.ValueString())
+	}
+	if !data.Hierarchical.IsNull() {
+		request.SetQueryParam("hierarchical", strconv.FormatBool(data.Hierarchical.ValueBool()))
 	}
 
 	// Application labels - API expects object with key-value pairs

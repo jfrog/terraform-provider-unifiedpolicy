@@ -16,10 +16,22 @@ Provides a Unified Policy template resource. This resource allows you to create,
 resource "unifiedpolicy_template" "example" {
   name             = "Example Security Template"
   version          = "1.0.0"
-  description      = "Example template for import and usage"
+  description      = "Example template for security vulnerability checks"
   category         = "security"
   data_source_type = "evidence"
   rego             = "${path.module}/policy.rego"
+  scanners         = ["sca", "secrets"]
+
+  parameters = [
+    {
+      name = "severity_threshold"
+      type = "string"
+    },
+    {
+      name = "max_count"
+      type = "int"
+    }
+  ]
 }
 ```
 
@@ -29,7 +41,7 @@ resource "unifiedpolicy_template" "example" {
 ### Required
 
 - `category` (String) Template category. Must be one of: security, legal, operational, quality, audit, workflow.
-- `data_source_type` (String) The type of data source the template expects. For creation only 'noop' and 'evidence' are allowed; 'xray' may appear when reading system templates.
+- `data_source_type` (String) The type of data source the template expects. For creation only 'noop' and 'evidence' are allowed; 'public_vulnerability' may appear when reading system templates.
 - `name` (String) The template name. Must be unique. 1-255 characters.
 - `rego` (String) Full (absolute) path to a .rego file (e.g. `rego = "/path/to/policies/security_vulnerability.rego"`). The file is read, validated (syntax and allowed operations), and its content is sent to the API. Only absolute paths to .rego files are accepted; relative paths and inline content are not supported. The path is stored in state; the API stores and returns the Rego code content. Required for create and update.
 - `version` (String) The template version. 1-100 characters.
@@ -42,8 +54,12 @@ resource "unifiedpolicy_template" "example" {
 
 ### Read-Only
 
+- `created_at` (String) Timestamp when the template was created.
+- `created_by` (String) User who created the template.
 - `id` (String) The ID of the template. This is computed and assigned by the API.
 - `is_custom` (Boolean) Indicates whether this is a custom template (created by user) or a system template.
+- `updated_at` (String) Timestamp when the template was last updated.
+- `updated_by` (String) User who last updated the template.
 
 <a id="nestedatt--parameters"></a>
 ### Nested Schema for `parameters`

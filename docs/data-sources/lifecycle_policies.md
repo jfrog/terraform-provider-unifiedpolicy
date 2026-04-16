@@ -22,16 +22,18 @@ Returns a list of Unified Policy lifecycle policies with support for filtering, 
 - `application_labels` (Map of String) Filter by application labels. Each key-value pair represents a label filter.
 - `enabled` (Boolean) Filter by enabled status. If not specified, returns both enabled and disabled policies.
 - `expand` (String) Use 'rules' to include rule summaries in the response.
+- `hierarchical` (Boolean) When true, includes policies from parent scopes (e.g., global policies when querying project scope).
 - `id` (String) Filter by a single policy ID. Sent as query parameter `id`.
 - `ids` (List of String) Filter by policy IDs. Multiple IDs are sent as repeated `id` query parameters (e.g. ?id=1005&id=1006).
-- `limit` (Number) Items per page (1-250, default: 100).
+- `limit` (Number) Items per page (1-1000, default: 100).
 - `mode` (String) Filter by enforcement mode. Must be either 'block' or 'warning'.
 - `name` (String) Filter by a single policy name. Sent as query parameter `name`.
 - `names` (List of String) Filter by policy names. Multiple names are sent as repeated `name` query parameters.
 - `page` (Number) Page offset (default: 0).
 - `project_key` (String) Filter by project key (for project scope).
-- `scope_type` (String) Filter by scope type. Must be either 'project' or 'application'.
-- `sort_by` (String) Sort field (e.g., 'name', 'created_at').
+- `rule_names` (List of String) Filter by rule names. Supports wildcard patterns. Sent as repeated `rule_name` query parameters.
+- `scope_type` (String) Filter by scope type. Must be one of: 'global', 'project', 'application'.
+- `sort_by` (String) Sort field. One of: 'name', 'enabled', 'mode', 'resource', 'action', 'created_at'.
 - `sort_order` (String) Sort order. Must be either 'asc' or 'desc'.
 - `stage_gates` (List of String) Filter by lifecycle gates. Allowed values: 'entry', 'exit', 'release'.
 - `stage_keys` (List of String) Filter by lifecycle stage keys (e.g., ['qa', 'production']).
