@@ -1,3 +1,37 @@
+## 1.0.3 (August 20, 2026)
+
+SECURITY:
+
+* CVE-2026-39821 - Updated Go to 1.25.13 and `golang.org/x/net` to v0.58.0.
+* CVE-2026-56865 - Updated Go to 1.25.13.
+* CVE-2026-56864 - Updated Go to 1.25.13.
+* CVE-2026-33818 - Updated Go to 1.25.13.
+* CVE-2026-46600 - Updated Go to 1.25.13.
+* CVE-2026-56862 - Updated Go to 1.25.13.
+* CVE-2026-56859 - Updated Go to 1.25.13.
+* CVE-2026-56860 - Updated Go to 1.25.13.
+* CVE-2026-56858 - Updated Go to 1.25.13.
+* CVE-2026-56853 - Updated Go to 1.25.13.
+* CVE-2026-25680 - Updated `golang.org/x/net` to v0.58.0.
+* CVE-2026-42506 - Updated `golang.org/x/net` to v0.58.0.
+* CVE-2026-42502 - Updated `golang.org/x/net` to v0.58.0.
+* CVE-2026-25681 - Updated `golang.org/x/net` to v0.58.0.
+* CVE-2026-27136 - Updated `golang.org/x/net` to v0.58.0.
+* CVE-2026-46595 - Updated `golang.org/x/crypto` to v0.55.0.
+* CVE-2026-42508 - Updated `golang.org/x/crypto` to v0.55.0.
+* CVE-2026-39834 - Updated `golang.org/x/crypto` to v0.55.0.
+* CVE-2026-39833 - Updated `golang.org/x/crypto` to v0.55.0.
+* CVE-2026-39832 - Updated `golang.org/x/crypto` to v0.55.0.
+* CVE-2026-39831 - Updated `golang.org/x/crypto` to v0.55.0.
+* CVE-2026-39830 - Updated `golang.org/x/crypto` to v0.55.0.
+* CVE-2026-39829 - Updated `golang.org/x/crypto` to v0.55.0.
+* CVE-2026-46597 - Updated `golang.org/x/crypto` to v0.55.0.
+* CVE-2026-39828 - Updated `golang.org/x/crypto` to v0.55.0.
+* CVE-2026-39827 - Updated `golang.org/x/crypto` to v0.55.0.
+* CVE-2026-39835 - Updated `golang.org/x/crypto` to v0.55.0.
+* CVE-2026-46598 - Updated `golang.org/x/crypto` to v0.55.0.
+* CVE-2026-1229 - Updated `github.com/cloudflare/circl` to v1.6.5.
+
 ## 1.0.2 (Apr 15, 2026). 
 
 BUG FIXES:
